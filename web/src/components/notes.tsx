@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
+import { PageTrail, useRepoName } from '#/components/trail'
 import { formatAge } from '#/lib/format'
 import { noteRouteName } from '#/lib/repo-id'
 import { createNote, deleteNote, saveNote } from '#/lib/server-functions'
@@ -65,6 +66,7 @@ export function ProjectNotes({ repoId, notes }: { repoId: string; notes: NoteMet
 export function NoteEditor({ repoId, note }: { repoId: string; note: Note }) {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
+  const repoName = useRepoName(repoId)
   const [draft, setDraft] = useState(note.content)
   const [dirty, setDirty] = useState(false)
   const [flash, setFlash] = useState('')
@@ -107,7 +109,13 @@ export function NoteEditor({ repoId, note }: { repoId: string; note: Note }) {
   return (
     <>
       <header className="topbar">
-        <h2 className="page-title">{note.title || note.name}</h2>
+        <PageTrail
+          crumbs={[
+            { label: 'overview', to: '/' },
+            { label: repoName, to: '/repos/$repoId', repoId },
+            { label: note.title || note.name },
+          ]}
+        />
         <div className="flex flex-wrap items-center gap-2">
           {flash ? <span className="accent">{flash}</span> : null}
           {dirty ? <span className="warn">unsaved</span> : null}

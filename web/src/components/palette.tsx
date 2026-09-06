@@ -2,7 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useRouterState } from '@tanstack/react-router'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { overviewQueryOptions } from '#/lib/query-options'
-import { addRoot, openProject, rescan, runPlugin, setFocus } from '#/lib/server-functions'
+import { addRoot, openProject, rescan, runPlugin, selectWorkspace, setFocus } from '#/lib/server-functions'
 import type { PaletteItem } from '#/lib/types'
 
 export function CommandPalette() {
@@ -75,11 +75,29 @@ export function CommandPalette() {
       setOpen(false)
       return
     }
+    if (item.kind === 'workspace' || item.action === 'workspace') {
+      const id = item.id.replace(/^ws:/, '')
+      const ov = await selectWorkspace({ data: { id } })
+      queryClient.setQueryData(['overview'], ov)
+      queryClient.removeQueries({ queryKey: ['project'] })
+      setOpen(false)
+      await navigate({ to: '/' })
+      return
+    }
     if (item.kind === 'plugin') {
       const target = item.repo_id || repoId || data?.today[0]?.repo.id
       if (!target) return
-      const action = item.action === 'launch' || item.action === 'acc:launch' ? 'launch' : item.action || 'launch'
-      await runPlugin({ data: { plugin: item.plugin || 'acc', action, repo: target, harness: 'claude' } })
+      const plugin = item.plugin || 'acc'
+      let action = item.action || 'launch'
+      if (action === 'acc:launch') action = 'launch'
+      await runPlugin({
+        data: {
+          plugin,
+          action,
+          repo: target,
+          harness: plugin === 'acc' ? 'claude' : undefined,
+        },
+      })
       setOpen(false)
     }
   }

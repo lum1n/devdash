@@ -46,6 +46,9 @@ type Project struct {
 
 // Detail loads the project screen for id.
 func (a *App) Detail(ctx context.Context, id string) (Project, error) {
+	if c, ok := a.remote(); ok {
+		return remoteDetail(c, ctx, id)
+	}
 	repo, err := a.Repo(id)
 	if err != nil {
 		return Project{}, err
@@ -66,17 +69,21 @@ func (a *App) Detail(ctx context.Context, id string) (Project, error) {
 		noteList = []notes.Meta{}
 	}
 	cfg := a.Config()
+	focus := cfg.ActiveWorkspace().Focus
 	return Project{
 		Detail:   d,
 		Plugins:  panels,
-		Next:     cfg.Focus.NextAction(d.Repo.ID),
+		Next:     focus.NextAction(d.Repo.ID),
 		Notes:    noteList,
-		Archived: cfg.Focus.IsArchived(d.Repo.ID),
+		Archived: focus.IsArchived(d.Repo.ID),
 	}, nil
 }
 
 // RunPlugin dispatches a plugin action against a scanned repo.
 func (a *App) RunPlugin(ctx context.Context, pluginID, action, repoID string, extra map[string]string) (plugin.Result, error) {
+	if c, ok := a.remote(); ok {
+		return remoteRunPlugin(c, ctx, pluginID, action, repoID, extra)
+	}
 	repo, err := a.Repo(repoID)
 	if err != nil {
 		return plugin.Result{}, err
@@ -86,6 +93,9 @@ func (a *App) RunPlugin(ctx context.Context, pluginID, action, repoID string, ex
 
 // ListNotes lists markdown files in the repo notes/ directory.
 func (a *App) ListNotes(id string) ([]notes.Meta, error) {
+	if c, ok := a.remote(); ok {
+		return remoteListNotes(c, context.Background(), id)
+	}
 	repo, err := a.Repo(id)
 	if err != nil {
 		return nil, err
@@ -95,6 +105,9 @@ func (a *App) ListNotes(id string) ([]notes.Meta, error) {
 
 // ReadNote loads one markdown note.
 func (a *App) ReadNote(id, name string) (notes.Note, error) {
+	if c, ok := a.remote(); ok {
+		return remoteReadNote(c, context.Background(), id, name)
+	}
 	repo, err := a.Repo(id)
 	if err != nil {
 		return notes.Note{}, err
@@ -104,6 +117,9 @@ func (a *App) ReadNote(id, name string) (notes.Note, error) {
 
 // CreateNote adds a note under repo/notes.
 func (a *App) CreateNote(id, title, content string) (notes.Note, error) {
+	if c, ok := a.remote(); ok {
+		return remoteCreateNote(c, context.Background(), id, title, content)
+	}
 	repo, err := a.Repo(id)
 	if err != nil {
 		return notes.Note{}, err
@@ -113,6 +129,9 @@ func (a *App) CreateNote(id, title, content string) (notes.Note, error) {
 
 // WriteNote updates a note's markdown.
 func (a *App) WriteNote(id, name, content string) (notes.Note, error) {
+	if c, ok := a.remote(); ok {
+		return remoteWriteNote(c, context.Background(), id, name, content)
+	}
 	repo, err := a.Repo(id)
 	if err != nil {
 		return notes.Note{}, err
@@ -122,6 +141,9 @@ func (a *App) WriteNote(id, name, content string) (notes.Note, error) {
 
 // Diff loads a commit patch, or one working-tree file.
 func (a *App) Diff(ctx context.Context, id, ref, file string) (scan.Diff, error) {
+	if c, ok := a.remote(); ok {
+		return remoteDiff(c, ctx, id, ref, file)
+	}
 	repo, err := a.Repo(id)
 	if err != nil {
 		return scan.Diff{}, err
@@ -131,6 +153,9 @@ func (a *App) Diff(ctx context.Context, id, ref, file string) (scan.Diff, error)
 
 // DeleteNote removes a note file.
 func (a *App) DeleteNote(id, name string) error {
+	if c, ok := a.remote(); ok {
+		return remoteDeleteNote(c, context.Background(), id, name)
+	}
 	repo, err := a.Repo(id)
 	if err != nil {
 		return err
@@ -140,6 +165,9 @@ func (a *App) DeleteNote(id, name string) error {
 
 // Open runs a local shortcut for the project.
 func (a *App) Open(ctx context.Context, id, action string) (OpenResult, error) {
+	if c, ok := a.remote(); ok {
+		return remoteOpen(c, ctx, id, action)
+	}
 	if res, err, ok := a.openPlugin(ctx, id, action); ok {
 		return res, err
 	}

@@ -9,6 +9,7 @@ import (
 
 	acclib "github.com/lum1n/ai-command-center/pkg/acc"
 	"github.com/lum1n/devdash/internal/plugin"
+	"github.com/lum1n/devdash/internal/repomatch"
 	"github.com/lum1n/devdash/internal/scan"
 )
 
@@ -88,7 +89,7 @@ func (p *Plugin) Commands() []plugin.Command {
 func (p *Plugin) Annotate(repo scan.Repo) []plugin.Annotation {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
-	agents := p.agentsFor(repo.Path)
+	agents := p.agentsFor(repo)
 	if len(agents) == 0 {
 		return nil
 	}
@@ -116,7 +117,7 @@ func (p *Plugin) Annotate(repo scan.Repo) []plugin.Annotation {
 func (p *Plugin) Project(repo scan.Repo) []plugin.Widget {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
-	data := p.project(repo.Path)
+	data := p.project(repo)
 	return []plugin.Widget{{
 		ID:      "acc.project",
 		Title:   "acc",
@@ -148,7 +149,7 @@ func (p *Plugin) Run(ctx context.Context, action string, repo scan.Repo, extra m
 		if sessionID == "" {
 			p.mu.RLock()
 			for _, s := range p.snap.sessions {
-				if SameTree(repo.Path, s.Project) {
+				if repomatch.SameTree(repo.Path, s.Project) {
 					source = string(s.Source)
 					sessionID = s.ID
 					break
@@ -189,19 +190,19 @@ func (p *Plugin) overview() OverviewData {
 	}
 }
 
-func (p *Plugin) project(path string) ProjectData {
+func (p *Plugin) project(repo scan.Repo) ProjectData {
 	return ProjectData{
-		Agents:    p.agentsFor(path),
-		Cost30d:   p.costFor(path),
+		Agents:    p.agentsFor(repo),
+		Cost30d:   p.costFor(repo.Path),
 		Harnesses: harnessesOnPATH(p.catalog),
-		Sessions:  p.sessionsFor(path),
+		Sessions:  p.sessionsFor(repo.Path),
 	}
 }
 
-func (p *Plugin) agentsFor(path string) []Agent {
+func (p *Plugin) agentsFor(repo scan.Repo) []Agent {
 	var out []Agent
 	for _, a := range p.snap.dash.Live.Agents {
-		if SameTree(path, a.Path) {
+		if repomatch.MatchesRepo(repo.Path, repo.ID, repo.Name, a.Session, a.Path) {
 			out = append(out, Agent{
 				Session: a.Session,
 				Kind:    string(a.Kind),
@@ -219,7 +220,7 @@ func (p *Plugin) agentsFor(path string) []Agent {
 func (p *Plugin) sessionsFor(path string) []Session {
 	var out []Session
 	for _, s := range p.snap.sessions {
-		if !SameTree(path, s.Project) {
+		if !repomatch.SameTree(path, s.Project) {
 			continue
 		}
 		when := ""
@@ -242,7 +243,7 @@ func (p *Plugin) sessionsFor(path string) []Session {
 func (p *Plugin) costFor(path string) float64 {
 	var sum float64
 	for _, row := range p.snap.roll.ByProject {
-		if SameTree(path, row.Key) {
+		if repomatch.SameTree(path, row.Key) {
 			sum += row.Totals.CostUSD
 		}
 	}

@@ -1,0 +1,35 @@
+# Build needs the sibling module at ../ai-command-center (go.mod replace).
+# Live agents still come from host agent-watcher + acc — see README.
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: api
+      additional_contexts:
+        acc: ../ai-command-center
+    ports:
+      - "127.0.0.1:8789:8789"
+    environment:
+      DEVDASH_LISTEN: 0.0.0.0:8789
+      DEVDASH_ROOTS: /repos
+      HOME: /root
+    volumes:
+      - ${DEVDASH_REPOS:-${HOME}/repos}:/repos:ro
+      - ${HOME}/.config/devdash:/root/.config/devdash
+      - ${HOME}/.config/acc:/root/.config/acc:ro
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: web
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      DEVDASH_API_URL: http://api:8789
+    depends_on:
+      - api
+    restart: unless-stopped

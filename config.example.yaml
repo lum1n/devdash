@@ -1,15 +1,26 @@
+# Copy to ~/.config/devdash/config.yaml
+# Env: DEVDASH_CONFIG, DEVDASH_LISTEN, DEVDASH_ROOTS, DEVDASH_WORKSPACE
+
 listen: 127.0.0.1:8789
-roots:
-  - /home/vegard/repos
+active: private
+workspaces:
+  - id: work
+    name: work
+    roots:
+      - /home/you/work
+  - id: private
+    name: private
+    roots:
+      - /home/you/repos
+  - id: private-remote
+    name: private remote
+    kind: ssh
+    host: you@box
+    url: 127.0.0.1:8790          # local side of the hop
+    listen: 127.0.0.1:8789       # remote `devdash serve`
 ignore:
   - references
   - node_modules
 actions:
   editor: nvim
   term: tmux
-focus:
-  pinned: []
-  archived: []
-  snoozed: {}
-  opened: {}
-  next: {}

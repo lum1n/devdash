@@ -30,7 +30,7 @@ export type Widget = {
   title: string
   summary: string
   kind?: string
-  data?: AccOverviewData | AccProjectData
+  data?: AccOverviewData | AccProjectData | TmuxOverviewData | TmuxProjectData | PortsOverviewData | PortsProjectData | GhOverviewData | GhProjectData
 }
 
 export type AccFleet = {
@@ -88,6 +88,74 @@ export type AccProjectData = {
   cost_30d: number
   harnesses: AccHarness[]
   sessions: AccSession[]
+}
+
+export type TmuxWindow = {
+  index: number
+  name: string
+  path?: string
+  command?: string
+}
+
+export type TmuxSession = {
+  name: string
+  windows: TmuxWindow[]
+  attached?: boolean
+}
+
+export type TmuxOverviewData = {
+  ready: boolean
+  sessions: number
+  error?: string
+}
+
+export type TmuxProjectData = {
+  ready: boolean
+  sessions: TmuxSession[]
+}
+
+export type PortListener = {
+  pid: number
+  port: number
+  addr: string
+  cwd: string
+  command: string
+  label: string
+  url: string
+}
+
+export type PortsOverviewData = {
+  ready: boolean
+  listening: number
+  error?: string
+}
+
+export type PortsProjectData = {
+  ready: boolean
+  listeners: PortListener[]
+}
+
+export type GhPull = {
+  number: number
+  title: string
+  url: string
+  draft: boolean
+  review: boolean
+  checks?: string
+  repo?: string
+}
+
+export type GhOverviewData = {
+  ready: boolean
+  open: number
+  review: number
+  error?: string
+}
+
+export type GhProjectData = {
+  ready: boolean
+  slug?: string
+  pulls: GhPull[]
 }
 
 export type Command = {
@@ -221,7 +289,20 @@ export type OpenResult = {
   detail?: string
 }
 
+export type Workspace = {
+  id: string
+  name: string
+  kind: 'local' | 'ssh' | string
+  roots?: string[]
+  host?: string
+  url?: string
+  active: boolean
+  ready: boolean
+}
+
 export type Overview = {
+  workspace: Workspace
+  workspaces: Workspace[]
   roots: string[]
   repos: Repo[]
   counts: Counts

@@ -16,16 +16,30 @@ import (
 
 // Overview is the shared payload for web and TUI.
 type Overview struct {
-	Roots     []string            `json:"roots"`
-	Repos     []scan.Repo         `json:"repos"`
-	Counts    Counts              `json:"counts"`
-	Today     []TodayItem         `json:"today"`
-	Palette   []PaletteItem       `json:"palette"`
-	Focus     FocusView           `json:"focus"`
-	Widgets   []plugin.Widget     `json:"widgets"`
-	Commands  []plugin.Command    `json:"commands"`
-	Notes     []plugin.Annotation `json:"annotations"`
-	ScannedAt time.Time           `json:"scanned_at"`
+	Workspace  WorkspaceInfo       `json:"workspace"`
+	Workspaces []WorkspaceInfo     `json:"workspaces"`
+	Roots      []string            `json:"roots"`
+	Repos      []scan.Repo         `json:"repos"`
+	Counts     Counts              `json:"counts"`
+	Today      []TodayItem         `json:"today"`
+	Palette    []PaletteItem       `json:"palette"`
+	Focus      FocusView           `json:"focus"`
+	Widgets    []plugin.Widget     `json:"widgets"`
+	Commands   []plugin.Command    `json:"commands"`
+	Notes      []plugin.Annotation `json:"annotations"`
+	ScannedAt  time.Time           `json:"scanned_at"`
+}
+
+// WorkspaceInfo is one named scan context.
+type WorkspaceInfo struct {
+	ID     string   `json:"id"`
+	Name   string   `json:"name"`
+	Kind   string   `json:"kind"`
+	Roots  []string `json:"roots,omitempty"`
+	Host   string   `json:"host,omitempty"`
+	URL    string   `json:"url,omitempty"`
+	Active bool     `json:"active"`
+	Ready  bool     `json:"ready"`
 }
 
 // Counts is the now-strip.
@@ -48,6 +62,7 @@ type App struct {
 	repos     []scan.Repo
 	notes     []plugin.Annotation
 	scannedAt time.Time
+	tunnels   map[string]*sshTunnel
 }
 
 // New loads config and an empty plugin registry.
@@ -62,7 +77,7 @@ func New(cfgPath string, plugins *plugin.Registry) (*App, error) {
 	if cfgPath == "" {
 		cfgPath, _ = config.Path()
 	}
-	return &App{cfg: cfg, cfgPath: cfgPath, plugins: plugins}, nil
+	return &App{cfg: cfg, cfgPath: cfgPath, plugins: plugins, tunnels: map[string]*sshTunnel{}}, nil
 }
 
 // Config returns a copy of the current config.
@@ -74,9 +89,21 @@ func (a *App) Config() config.Config {
 
 // Scan walks configured roots and refreshes the cache.
 func (a *App) Scan(ctx context.Context) error {
+	if c, ok := a.remote(); ok {
+		ov, err := remoteScan(c, ctx)
+		if err != nil {
+			return err
+		}
+		a.mu.Lock()
+		a.repos = ov.Repos
+		a.notes = ov.Notes
+		a.scannedAt = time.Now()
+		a.mu.Unlock()
+		return nil
+	}
 	a.mu.RLock()
-	roots := append([]string(nil), a.cfg.Roots...)
-	ignore := append([]string(nil), a.cfg.Ignore...)
+	roots := a.cfg.ScanRoots()
+	ignore := a.cfg.ScanIgnore()
 	a.mu.RUnlock()
 
 	a.plugins.Refresh(ctx)
@@ -110,6 +137,14 @@ func (a *App) Scan(ctx context.Context) error {
 
 // Overview returns the last scan, scanning once if empty.
 func (a *App) Overview(ctx context.Context) (Overview, error) {
+	if c, ok := a.remote(); ok {
+		ov, err := remoteOverview(c, ctx)
+		if err != nil {
+			return Overview{}, err
+		}
+		a.stampWorkspaces(&ov)
+		return ov, nil
+	}
 	a.mu.RLock()
 	empty := a.scannedAt.IsZero()
 	a.mu.RUnlock()
@@ -133,20 +168,23 @@ func (a *App) Overview(ctx context.Context) (Overview, error) {
 		notes = []plugin.Annotation{}
 	}
 	now := time.Now()
-	today := buildToday(a.repos, notes, a.cfg.Focus, now)
-	palette := buildPalette(today, a.repos, commands, a.cfg.Focus)
-	return Overview{
-		Roots:     append([]string(nil), a.cfg.Roots...),
+	focus := a.cfg.ActiveWorkspace().Focus
+	today := buildToday(a.repos, notes, focus, now)
+	palette := buildPalette(today, a.repos, commands, focus, a.workspaceInfos())
+	ov := Overview{
+		Roots:     a.cfg.ScanRoots(),
 		Repos:     append([]scan.Repo(nil), a.repos...),
-		Counts:    count(a.repos, a.cfg.Focus, len(today)),
+		Counts:    count(a.repos, focus, len(today)),
 		Today:     today,
 		Palette:   palette,
-		Focus:     focusView(a.cfg.Focus, now),
+		Focus:     focusView(focus, now),
 		Widgets:   widgets,
 		Commands:  commands,
 		Notes:     notes,
 		ScannedAt: a.scannedAt,
-	}, nil
+	}
+	a.stampWorkspacesLocked(&ov)
+	return ov, nil
 }
 
 // AddRoot appends an existing directory and persists config.
@@ -163,14 +201,26 @@ func (a *App) AddRoot(path string) error {
 		return fmt.Errorf("root %s is not a directory", path)
 	}
 
+	if c, ok := a.remote(); ok {
+		_, err := remoteAddRoot(c, context.Background(), path)
+		return err
+	}
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	for _, r := range a.cfg.Roots {
+	ws := a.cfg.ActivePtr()
+	if ws == nil {
+		return fmt.Errorf("no active workspace")
+	}
+	if ws.IsSSH() {
+		return fmt.Errorf("add a root on the remote host")
+	}
+	for _, r := range ws.Roots {
 		if samePath(r, path) {
 			return nil
 		}
 	}
-	a.cfg.Roots = append(a.cfg.Roots, path)
+	ws.Roots = append(ws.Roots, path)
+	a.cfg.NormalizeWorkspaces()
 	return config.Save(a.cfgPath, a.cfg)
 }
 

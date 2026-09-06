@@ -16,6 +16,27 @@ export const rescan = createServerFn({ method: 'POST' }).handler(async () => {
   return apiPost<Overview>('/api/scan')
 })
 
+export const selectWorkspace = createServerFn({ method: 'POST' })
+  .validator(z.object({ id: z.string().min(1) }))
+  .handler(async ({ data }) => {
+    return apiPost<Overview>(`/api/workspaces/${encodeURIComponent(data.id)}/select`)
+  })
+
+export const addWorkspace = createServerFn({ method: 'POST' })
+  .validator(
+    z.object({
+      name: z.string().min(1),
+      kind: z.string().optional(),
+      roots: z.array(z.string()).optional(),
+      host: z.string().optional(),
+      url: z.string().optional(),
+      listen: z.string().optional(),
+    }),
+  )
+  .handler(async ({ data }) => {
+    return apiPost<Overview>('/api/workspaces', data)
+  })
+
 export const addRoot = createServerFn({ method: 'POST' })
   .validator(z.object({ path: z.string().min(1) }))
   .handler(async ({ data }) => {
@@ -121,6 +142,8 @@ export const runPlugin = createServerFn({ method: 'POST' })
       repo: z.string().min(1),
       harness: z.string().optional(),
       session: z.string().optional(),
+      target: z.string().optional(),
+      url: z.string().optional(),
     }),
   )
   .handler(async ({ data }) => {
@@ -129,5 +152,7 @@ export const runPlugin = createServerFn({ method: 'POST' })
       repo: cleanRepoId(data.repo),
       harness: data.harness,
       session: data.session,
+      target: data.target,
+      url: data.url,
     })
   })

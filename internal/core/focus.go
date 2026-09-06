@@ -1,6 +1,7 @@
 package core
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -9,35 +10,40 @@ import (
 
 // SetFocus updates pin / archive / snooze for a repo and persists config.
 func (a *App) SetFocus(id, action string, hours int) error {
+	if c, ok := a.remote(); ok {
+		return remoteSetFocus(c, context.Background(), id, action, hours)
+	}
 	if _, err := a.Repo(id); err != nil {
 		return err
 	}
 	now := time.Now()
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	a.cfg.Focus.Normalize()
-	a.cfg.Focus.PruneSnoozes(now)
+	f := a.cfg.FocusPtr()
+	f.Normalize()
+	f.PruneSnoozes(now)
 	switch action {
 	case "pin":
-		a.cfg.Focus.TogglePinned(id, true)
+		f.TogglePinned(id, true)
 	case "unpin":
-		a.cfg.Focus.TogglePinned(id, false)
+		f.TogglePinned(id, false)
 	case "archive":
-		a.cfg.Focus.ToggleArchived(id, true)
+		f.ToggleArchived(id, true)
 	case "unarchive":
-		a.cfg.Focus.ToggleArchived(id, false)
+		f.ToggleArchived(id, false)
 	case "snooze":
 		if hours <= 0 {
 			hours = 24
 		}
-		a.cfg.Focus.Snooze(id, time.Duration(hours)*time.Hour, now)
+		f.Snooze(id, time.Duration(hours)*time.Hour, now)
 	case "unsnooze":
-		a.cfg.Focus.ClearSnooze(id)
+		f.ClearSnooze(id)
 	case "opened":
-		a.cfg.Focus.TouchOpened(id, now)
+		f.TouchOpened(id, now)
 	default:
 		return fmt.Errorf("unknown focus action %s", action)
 	}
+	a.cfg.NormalizeWorkspaces()
 	return config.Save(a.cfgPath, a.cfg)
 }
 
@@ -48,11 +54,15 @@ func (a *App) MarkOpened(id string) {
 
 // SetNext stores the one-line next action for a repo.
 func (a *App) SetNext(id, text string) error {
+	if c, ok := a.remote(); ok {
+		return remoteSetNext(c, context.Background(), id, text)
+	}
 	if _, err := a.Repo(id); err != nil {
 		return err
 	}
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	a.cfg.Focus.SetNextAction(id, text)
+	a.cfg.FocusPtr().SetNextAction(id, text)
+	a.cfg.NormalizeWorkspaces()
 	return config.Save(a.cfgPath, a.cfg)
 }

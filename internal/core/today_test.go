@@ -12,6 +12,27 @@ import (
 	"github.com/lum1n/devdash/internal/scan"
 )
 
+func TestBuildTodayScoresPluginNotes(t *testing.T) {
+	now := time.Date(2026, 9, 6, 12, 0, 0, 0, time.UTC)
+	repos := []scan.Repo{{ID: "sessh", Name: "sessh", LastCommit: now}}
+	notes := []plugin.Annotation{{
+		RepoID: "sessh", Kind: "review", Label: "review #4", Tone: "danger",
+	}}
+	today := buildToday(repos, notes, config.Focus{}, now)
+	if len(today) != 1 || today[0].Repo.ID != "sessh" {
+		t.Fatalf("today=%v", today)
+	}
+	found := false
+	for _, w := range today[0].Why {
+		if w.ID == "review" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("why=%v", today[0].Why)
+	}
+}
+
 func TestBuildTodayRanksPinnedAndDropsArchived(t *testing.T) {
 	now := time.Date(2026, 9, 6, 12, 0, 0, 0, time.UTC)
 	repos := []scan.Repo{

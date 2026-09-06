@@ -231,6 +231,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.mode = modeRepos
 		case "3":
 			m.mode = modeRoots
+		case "W":
+			return m, m.cycleWorkspace()
 		case "/":
 			if m.mode == modeRepos {
 				m.filtering = true
@@ -503,6 +505,16 @@ func (m model) runPalette(item core.PaletteItem) tea.Cmd {
 	switch {
 	case item.Action == "rescan":
 		return m.refresh(true)
+	case item.Action == "workspace":
+		id := strings.TrimPrefix(item.ID, "ws:")
+		app := m.app
+		return func() tea.Msg {
+			if err := app.SelectWorkspace(context.Background(), id); err != nil {
+				return overviewMsg{err: err}
+			}
+			ov, err := app.Overview(context.Background())
+			return overviewMsg{ov: ov, err: err}
+		}
 	case item.Kind == "jump" && item.RepoID != "":
 		return m.loadDetail(item.RepoID)
 	case item.Action == "editor" || item.Action == "term" || item.Action == "url":
@@ -667,6 +679,28 @@ func (m model) paletteItems() []core.PaletteItem {
 		}
 	}
 	return out
+}
+
+func (m model) cycleWorkspace() tea.Cmd {
+	list := m.ov.Workspaces
+	if len(list) < 2 {
+		return func() tea.Msg { return statusMsg("one workspace") }
+	}
+	next := list[0].ID
+	for i, w := range list {
+		if w.Active && i+1 < len(list) {
+			next = list[i+1].ID
+			break
+		}
+	}
+	app := m.app
+	return func() tea.Msg {
+		if err := app.SelectWorkspace(context.Background(), next); err != nil {
+			return overviewMsg{err: err}
+		}
+		ov, err := app.Overview(context.Background())
+		return overviewMsg{ov: ov, err: err}
+	}
 }
 
 func truncateRunes(s string, n int) string {

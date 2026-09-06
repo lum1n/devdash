@@ -18,7 +18,8 @@ export function TodayBoard({
     <section className="section">
       <p className="section-title">
         today
-        <span className="muted"> {items.length} · enter jump  e editor  t tmux  p pin  s snooze  x archive</span>
+        <span className="muted"> {items.length}</span>
+        <span className="muted keys-hint"> · enter jump  e editor  t tmux  p pin  s snooze  x archive</span>
       </p>
       {items.length === 0 ? (
         <p className="empty muted">queue is clear — pin a repo, set a next action, or wait for dirty / behind / agents</p>

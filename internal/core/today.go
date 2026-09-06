@@ -99,19 +99,16 @@ func scoreRepo(r scan.Repo, notes []plugin.Annotation, focus config.Focus, now t
 		item.Why = append(item.Why, Reason{ID: "pinned", Label: "pinned", Tone: "ok"})
 	}
 	for _, n := range notes {
-		if n.Kind != "agent" {
-			continue
-		}
 		tone := n.Tone
 		if tone == "" {
 			tone = "warn"
 		}
-		pts := 35
-		if tone == "danger" {
-			pts = 55
+		pts := noteScore(n.Kind, tone)
+		if pts == 0 {
+			continue
 		}
 		item.Score += pts
-		item.Why = append(item.Why, Reason{ID: "agent", Label: n.Label, Detail: n.Detail, Tone: tone})
+		item.Why = append(item.Why, Reason{ID: n.Kind, Label: n.Label, Detail: n.Detail, Tone: tone})
 	}
 	if r.Behind > 0 {
 		item.Score += 40 + min(r.Behind, 10)
@@ -147,10 +144,22 @@ func scoreRepo(r scan.Repo, notes []plugin.Annotation, focus config.Focus, now t
 	return item
 }
 
-func buildPalette(today []TodayItem, repos []scan.Repo, commands []plugin.Command, focus config.Focus) []PaletteItem {
+func buildPalette(today []TodayItem, repos []scan.Repo, commands []plugin.Command, focus config.Focus, spaces []WorkspaceInfo) []PaletteItem {
 	out := []PaletteItem{
 		{ID: "rescan", Kind: "action", Title: "rescan", Keys: "r", Action: "rescan"},
 		{ID: "add-root", Kind: "action", Title: "add root", Keys: "A", Action: "add-root"},
+	}
+	for _, ws := range spaces {
+		if ws.Active {
+			continue
+		}
+		out = append(out, PaletteItem{
+			ID:       "ws:" + ws.ID,
+			Kind:     "workspace",
+			Title:    "workspace · " + ws.Name,
+			Subtitle: ws.Kind,
+			Action:   "workspace",
+		})
 	}
 	seen := map[string]bool{}
 	addJump := func(r scan.Repo, subtitle string) {
@@ -231,6 +240,25 @@ func whySummary(why []Reason) string {
 		return ""
 	}
 	return why[0].Label
+}
+
+func noteScore(kind, tone string) int {
+	if kind == "agent" {
+		if tone == "danger" {
+			return 55
+		}
+		return 35
+	}
+	switch tone {
+	case "danger":
+		return 45
+	case "warn":
+		return 22
+	case "ok":
+		return 12
+	default:
+		return 8
+	}
 }
 
 func pluginIDFromCommand(id string) string {

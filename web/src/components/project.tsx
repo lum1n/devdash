@@ -2,7 +2,9 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { useEffect, useMemo, useState } from 'react'
 import { AccProject } from '#/components/acc'
+import { GhProject, PortsProject, TmuxProject } from '#/components/plugins'
 import { ProjectNotes } from '#/components/notes'
+import { PageTrail } from '#/components/trail'
 import { formatAge, toneClass } from '#/lib/format'
 import { statusPath } from '#/lib/repo-id'
 import { openProject, runPlugin, setFocus, setNext } from '#/lib/server-functions'
@@ -39,6 +41,12 @@ export function ProjectPage({ detail }: { detail: ProjectDetail }) {
   const acc = useMutation({
     mutationFn: (input: { action: string; harness?: string; session?: string }) =>
       runPlugin({ data: { plugin: 'acc', repo: repo.id, ...input } }),
+    onSuccess: (res) => setFlash(res.detail || res.action),
+    onError: (err) => setFlash(err.message),
+  })
+  const plug = useMutation({
+    mutationFn: (input: { plugin: string; action: string; target?: string }) =>
+      runPlugin({ data: { plugin: input.plugin, repo: repo.id, action: input.action, target: input.target } }),
     onSuccess: (res) => setFlash(res.detail || res.action),
     onError: (err) => setFlash(err.message),
   })
@@ -125,7 +133,7 @@ export function ProjectPage({ detail }: { detail: ProjectDetail }) {
   return (
     <>
       <header className="topbar">
-        <h2 className="page-title">{repo.name}</h2>
+        <PageTrail crumbs={[{ label: 'overview', to: '/' }, { label: repo.name }]} />
         <div className="flex flex-wrap items-center gap-2">
           {flash ? <span className="accent">{flash}</span> : null}
           <Link className="btn" to="/">
@@ -208,6 +216,21 @@ export function ProjectPage({ detail }: { detail: ProjectDetail }) {
             acc.mutate({ action: 'resume', harness: session.source, session: session.id })
           }
         />
+        <TmuxProject
+          widgets={detail.plugins}
+          pending={plug.isPending}
+          onAttach={(session) => plug.mutate({ plugin: 'tmux', action: 'attach', target: session })}
+        />
+        <PortsProject
+          widgets={detail.plugins}
+          pending={plug.isPending}
+          onOpen={(url) => plug.mutate({ plugin: 'ports', action: 'open', target: url })}
+        />
+        <GhProject
+          widgets={detail.plugins}
+          pending={plug.isPending}
+          onOpen={(url) => plug.mutate({ plugin: 'gh', action: 'open', target: url })}
+        />
 
         <section className="section">
           <p className="section-title">shortcuts</p>
@@ -236,8 +259,10 @@ export function ProjectPage({ detail }: { detail: ProjectDetail }) {
             </button>
           </div>
           <p className="muted">
-            keys {detail.shortcuts.map((s) => s.key).join(' ')} a p s x · : palette
-            {copied ? ` · ${copied}` : ''}
+            <span className="keys-hint">
+              keys {detail.shortcuts.map((s) => s.key).join(' ')} a p s x · : palette
+            </span>
+            {copied ? <span>{copied}</span> : null}
           </p>
         </section>
 
@@ -345,7 +370,7 @@ export function ProjectPage({ detail }: { detail: ProjectDetail }) {
                           {c.hash}
                         </button>
                       </td>
-                      <td>
+                      <td className="lead">
                         <Link
                           to="/repos/$repoId/diff/$ref"
                           params={{ repoId: repo.id, ref: c.hash }}

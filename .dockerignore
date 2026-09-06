@@ -1,0 +1,10 @@
+.git
+**/.git
+web/node_modules
+web/.output
+web/dist
+web/.vinxi
+**/*~
+**/.DS_Store
+*.md
+!README.md

@@ -32,16 +32,21 @@ func (m model) View() tea.View {
 
 func (m model) viewHeader() string {
 	c := m.ov.Counts
-	line := fmt.Sprintf("%s  today %s  repos %s  dirty %s  behind %d  attn %s",
+	ws := m.ov.Workspace.Name
+	if ws == "" {
+		ws = m.ov.Workspace.ID
+	}
+	line := fmt.Sprintf("%s  %s  today %s  repos %s  dirty %s  behind %d  attn %s",
 		titleStyle.Render("> devdash"),
+		dimStyle.Render(ws),
 		metricBig.Render(fmt.Sprintf("%d", c.Today)),
 		metricBig.Render(fmt.Sprintf("%d", c.Repos)),
 		metricBig.Render(fmt.Sprintf("%d", c.Dirty)),
 		c.Behind,
 		metricBig.Render(fmt.Sprintf("%d", c.Attention)),
 	)
-	if accLine := accHeader(m.ov.Widgets); accLine != "" {
-		line += "  " + dimStyle.Render(accLine)
+	if extra := pluginHeader(m.ov.Widgets); extra != "" {
+		line += "  " + dimStyle.Render(extra)
 	}
 	if m.errMsg != "" {
 		line += "  " + errStyle.Render(truncateRunes(m.errMsg, 40))
@@ -56,7 +61,7 @@ func (m model) viewTabs() string {
 	}{
 		{modeToday, "1 today"},
 		{modeRepos, "2 repos"},
-		{modeRoots, "3 roots"},
+		{modeRoots, "3 ws"},
 		{modeProject, "enter project"},
 	}
 	var parts []string
@@ -280,6 +285,15 @@ func (m model) viewProject() string {
 		lines = append(lines, dimStyle.Render("-- acc"))
 		lines = append(lines, accBody)
 	}
+	for _, w := range d.Plugins {
+		if w.Kind == "acc.project" || !strings.HasSuffix(w.Kind, ".project") {
+			continue
+		}
+		lines = append(lines, dimStyle.Render("-- "+w.Title))
+		if w.Summary != "" {
+			lines = append(lines, w.Summary)
+		}
+	}
 	weekNote := ""
 	if m.weekSel >= 0 && m.weekSel < len(d.Activity) {
 		weekNote = fmt.Sprintf("  week %s", d.Activity[m.weekSel].Start.Format("01-02"))
@@ -318,12 +332,21 @@ func (m model) viewProject() string {
 	return strings.Join(lines, "\n")
 }
 
+func pluginHeader(widgets []plugin.Widget) string {
+	var parts []string
+	for _, w := range widgets {
+		if !strings.HasSuffix(w.Kind, ".overview") || w.Summary == "" {
+			continue
+		}
+		parts = append(parts, w.Title+": "+w.Summary)
+	}
+	return strings.Join(parts, "  ·  ")
+}
+
 func accHeader(widgets []plugin.Widget) string {
 	for _, w := range widgets {
-		if w.Kind == "acc.overview" {
-			if w.Summary != "" {
-				return w.Summary
-			}
+		if w.Kind == "acc.overview" && w.Summary != "" {
+			return w.Summary
 		}
 	}
 	return ""
@@ -445,6 +468,25 @@ func (m model) viewRepos() string {
 
 func (m model) viewRoots() string {
 	var lines []string
+	lines = append(lines, dimStyle.Render("-- workspaces  W cycle"))
+	if len(m.ov.Workspaces) == 0 {
+		lines = append(lines, dimStyle.Render("// one local workspace from roots"))
+	}
+	for _, w := range m.ov.Workspaces {
+		mark := " "
+		if w.Active {
+			mark = "*"
+		}
+		kind := w.Kind
+		if kind == "" {
+			kind = "local"
+		}
+		line := fmt.Sprintf("%s %-16s %-6s %s", mark, w.Name, kind, strings.Join(w.Roots, " "))
+		if w.Host != "" {
+			line += "  " + w.Host
+		}
+		lines = append(lines, truncateRunes(line, m.width))
+	}
 	lines = append(lines, dimStyle.Render("-- roots"))
 	if len(m.ov.Roots) == 0 {
 		lines = append(lines, dimStyle.Render("// none — A to add"))

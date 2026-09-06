@@ -1,18 +1,26 @@
 import { Link } from '@tanstack/react-router'
 import { useEffect, useState, type ComponentType } from 'react'
 import type { DiffStyle } from '#/components/pierre-diff'
+import { PageTrail, useRepoName } from '#/components/trail'
 import type { RepoDiff } from '#/lib/types'
 
 type DiffView = ComponentType<{ patch: string; cacheKey: string; diffStyle: DiffStyle }>
 
 export function DiffPage({ repoId, diff }: { repoId: string; diff: RepoDiff }) {
   const [diffStyle, setDiffStyle] = useState<DiffStyle>('unified')
+  const repoName = useRepoName(repoId)
   const fileNote = diff.files.length === 1 ? '1 file' : `${diff.files.length} files`
 
   return (
     <>
       <header className="topbar">
-        <h2 className="page-title">{diff.title || diff.ref}</h2>
+        <PageTrail
+          crumbs={[
+            { label: 'overview', to: '/' },
+            { label: repoName, to: '/repos/$repoId', repoId },
+            { label: diff.title || diff.ref },
+          ]}
+        />
         <div className="flex flex-wrap items-center gap-2">
           {diff.truncated ? <span className="warn">truncated</span> : null}
           <div role="group" aria-label="diff layout">

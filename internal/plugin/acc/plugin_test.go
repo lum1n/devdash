@@ -76,6 +76,18 @@ func TestWidgetsAndAnnotateFromSnapshot(t *testing.T) {
 	if len(notes) != 1 || notes[0].Tone != "danger" || notes[0].Label != "agent claude" {
 		t.Fatalf("notes=%v", notes)
 	}
+
+	cursorDir := filepath.Join(t.TempDir(), "devdash")
+	p.snap.dash.Live.Agents = append(p.snap.dash.Live.Agents, acclib.AgentPane{
+		Session: "repos/devdash",
+		Kind:    acclib.HarnessCursor,
+		State:   acclib.StateThinking,
+		Path:    filepath.Join(t.TempDir(), "store.db"),
+	})
+	cursorNotes := p.Annotate(scan.Repo{ID: "devdash", Name: "devdash", Path: cursorDir})
+	if len(cursorNotes) != 1 || cursorNotes[0].Label != "agent cursor" {
+		t.Fatalf("cursor session notes=%v", cursorNotes)
+	}
 	if got := p.Annotate(scan.Repo{ID: "other", Path: filepath.Join(t.TempDir(), "other")}); len(got) != 0 {
 		t.Fatalf("other notes=%v", got)
 	}

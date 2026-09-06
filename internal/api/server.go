@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/lum1n/devdash/internal/config"
 	"github.com/lum1n/devdash/internal/core"
 )
 
@@ -31,6 +32,9 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /api/plugins/{id}/run", s.pluginRun)
 	mux.HandleFunc("POST /api/scan", s.scan)
 	mux.HandleFunc("POST /api/roots", s.addRoot)
+	mux.HandleFunc("GET /api/workspaces", s.workspaces)
+	mux.HandleFunc("POST /api/workspaces", s.addWorkspace)
+	mux.HandleFunc("POST /api/workspaces/{id}/select", s.selectWorkspace)
 	return withCORS(mux)
 }
 
@@ -209,6 +213,8 @@ func (s *Server) pluginRun(w http.ResponseWriter, r *http.Request) {
 		Repo    string `json:"repo"`
 		Harness string `json:"harness,omitempty"`
 		Session string `json:"session,omitempty"`
+		Target  string `json:"target,omitempty"`
+		URL     string `json:"url,omitempty"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Action == "" || body.Repo == "" {
 		writeError(w, http.StatusBadRequest, errOr("action and repo are required"))
@@ -217,12 +223,69 @@ func (s *Server) pluginRun(w http.ResponseWriter, r *http.Request) {
 	res, err := s.App.RunPlugin(r.Context(), pluginID, body.Action, body.Repo, map[string]string{
 		"harness": body.Harness,
 		"session": body.Session,
+		"target":  orURL(body.Target, body.URL),
+		"url":     body.URL,
 	})
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, res)
+}
+
+func (s *Server) workspaces(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]any{
+		"active":     s.App.Config().Active,
+		"workspaces": s.App.Workspaces(r.Context()),
+	})
+}
+
+func (s *Server) selectWorkspace(w http.ResponseWriter, r *http.Request) {
+	if err := s.App.SelectWorkspace(r.Context(), r.PathValue("id")); err != nil {
+		writeError(w, http.StatusBadRequest, err)
+		return
+	}
+	ov, err := s.App.Overview(r.Context())
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, ov)
+}
+
+func (s *Server) addWorkspace(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		ID     string   `json:"id"`
+		Name   string   `json:"name"`
+		Kind   string   `json:"kind"`
+		Roots  []string `json:"roots"`
+		Host   string   `json:"host"`
+		URL    string   `json:"url"`
+		Listen string   `json:"listen"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeError(w, http.StatusBadRequest, errOr("workspace is required"))
+		return
+	}
+	err := s.App.AddWorkspace(r.Context(), config.Workspace{
+		ID:     body.ID,
+		Name:   body.Name,
+		Kind:   body.Kind,
+		Roots:  body.Roots,
+		Host:   body.Host,
+		URL:    body.URL,
+		Listen: body.Listen,
+	})
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err)
+		return
+	}
+	ov, err := s.App.Overview(r.Context())
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, ov)
 }
 
 func (s *Server) addRoot(w http.ResponseWriter, r *http.Request) {
@@ -261,6 +324,13 @@ func writeError(w http.ResponseWriter, status int, err error) {
 		msg = err.Error()
 	}
 	writeJSON(w, status, map[string]string{"error": msg})
+}
+
+func orURL(a, b string) string {
+	if a != "" {
+		return a
+	}
+	return b
 }
 
 func errOr(msg string) error {

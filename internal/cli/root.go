@@ -13,6 +13,9 @@ import (
 	"github.com/lum1n/devdash/internal/core"
 	"github.com/lum1n/devdash/internal/plugin"
 	"github.com/lum1n/devdash/internal/plugin/acc"
+	"github.com/lum1n/devdash/internal/plugin/gh"
+	"github.com/lum1n/devdash/internal/plugin/ports"
+	"github.com/lum1n/devdash/internal/plugin/tmux"
 	"github.com/lum1n/devdash/internal/tui"
 	"github.com/spf13/cobra"
 )
@@ -50,6 +53,9 @@ the API from devdash serve.`,
 func newApp() (*core.App, error) {
 	reg := &plugin.Registry{}
 	acc.Register(reg)
+	tmux.Register(reg)
+	ports.Register(reg)
+	gh.Register(reg)
 	return core.New(cfgPath, reg)
 }
 

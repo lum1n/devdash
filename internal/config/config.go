@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -13,11 +14,13 @@ const envPrefix = "DEVDASH"
 
 // Config is the on-disk operator config.
 type Config struct {
-	Listen  string   `yaml:"listen"`
-	Roots   []string `yaml:"roots"`
-	Ignore  []string `yaml:"ignore"`
-	Actions Actions  `yaml:"actions"`
-	Focus   Focus    `yaml:"focus"`
+	Listen     string      `yaml:"listen"`
+	Active     string      `yaml:"active,omitempty"`
+	Workspaces []Workspace `yaml:"workspaces,omitempty"`
+	Roots      []string    `yaml:"roots,omitempty"`
+	Ignore     []string    `yaml:"ignore,omitempty"`
+	Actions    Actions     `yaml:"actions"`
+	Focus      Focus       `yaml:"focus"`
 }
 
 // Actions are local shortcuts on the project screen.
@@ -72,7 +75,7 @@ func Load(path string) (Config, error) {
 		if errors.Is(err, os.ErrNotExist) {
 			cfg = withDefaultRoot(cfg)
 			cfg.Focus.Normalize()
-			return cfg, nil
+			return finishLoad(cfg), nil
 		}
 		return cfg, fmt.Errorf("read config: %w", err)
 	}
@@ -83,7 +86,41 @@ func Load(path string) (Config, error) {
 		cfg.Listen = Default().Listen
 	}
 	cfg.Focus.Normalize()
-	return cfg, nil
+	return finishLoad(cfg), nil
+}
+
+func finishLoad(cfg Config) Config {
+	cfg = applyEnv(cfg)
+	cfg.NormalizeWorkspaces()
+	if v := strings.TrimSpace(os.Getenv(envPrefix + "_ROOTS")); v != "" {
+		if ws := cfg.ActivePtr(); ws != nil && !ws.IsSSH() {
+			ws.Roots = append([]string(nil), cfg.Roots...)
+		}
+	}
+	cfg.syncLegacy()
+	return cfg
+}
+
+func applyEnv(cfg Config) Config {
+	if v := strings.TrimSpace(os.Getenv(envPrefix + "_LISTEN")); v != "" {
+		cfg.Listen = v
+	}
+	if v := strings.TrimSpace(os.Getenv(envPrefix + "_WORKSPACE")); v != "" {
+		cfg.Active = v
+	}
+	if v := strings.TrimSpace(os.Getenv(envPrefix + "_ROOTS")); v != "" {
+		var roots []string
+		for _, p := range filepath.SplitList(v) {
+			p = strings.TrimSpace(p)
+			if p != "" {
+				roots = append(roots, p)
+			}
+		}
+		if len(roots) > 0 {
+			cfg.Roots = roots
+		}
+	}
+	return cfg
 }
 
 // Save writes cfg to path, creating the parent directory.
@@ -98,6 +135,7 @@ func Save(path string, cfg Config) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return err
 	}
+	cfg.NormalizeWorkspaces()
 	b, err := yaml.Marshal(cfg)
 	if err != nil {
 		return err

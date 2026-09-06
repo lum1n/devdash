@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { useMemo, useState } from 'react'
 import { AccOverview } from '#/components/acc'
+import { LivePlugins } from '#/components/plugins'
 import { TodayBoard } from '#/components/today'
 import { formatAge } from '#/lib/format'
 import { addRoot, openProject, rescan, setFocus } from '#/lib/server-functions'
@@ -61,7 +62,7 @@ export function OverviewPage({ overview }: { overview: Overview }) {
     <>
       <header className="topbar">
         <h2 className="page-title">overview</h2>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <input
             aria-label="filter repos"
             placeholder="/ filter   : palette"
@@ -106,6 +107,7 @@ export function OverviewPage({ overview }: { overview: Overview }) {
         />
 
         <AccOverview widgets={overview.widgets} />
+        <LivePlugins widgets={overview.widgets} />
 
         <section className="section">
           <p className="section-title">add root</p>
@@ -121,7 +123,7 @@ export function OverviewPage({ overview }: { overview: Overview }) {
               placeholder="/home/you/repos"
               value={rootPath}
               onChange={(e) => setRootPath(e.target.value)}
-              className="min-w-72"
+              className="min-w-0 w-full sm:min-w-72 sm:w-auto"
             />
             <button className="btn primary" type="submit" disabled={add.isPending}>
               add
