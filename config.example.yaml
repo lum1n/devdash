@@ -1,0 +1,15 @@
+listen: 127.0.0.1:8789
+roots:
+  - /home/vegard/repos
+ignore:
+  - references
+  - node_modules
+actions:
+  editor: nvim
+  term: tmux
+focus:
+  pinned: []
+  archived: []
+  snoozed: {}
+  opened: {}
+  next: {}

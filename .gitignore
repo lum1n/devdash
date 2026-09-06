@@ -1,0 +1,15 @@
+/devdash
+/bin/
+*.exe
+*.test
+*.out
+.env
+.env.local
+web/node_modules
+web/dist
+web/.output
+web/.nitro
+web/.tanstack
+web/.vinxi
+web/*.local
+.DS_Store
