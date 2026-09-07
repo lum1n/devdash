@@ -115,7 +115,7 @@ function SettingsPage() {
               </tbody>
             </table>
           )}
-          <p className="muted">config: ~/.config/devdash/config.yaml</p>
+          <p className="muted">active workspace · {data.config_path || '~/.config/devdash/config.yaml'}</p>
         </section>
         <section className="section">
           <p className="section-title">focus</p>

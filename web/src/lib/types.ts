@@ -313,4 +313,5 @@ export type Overview = {
   commands: Command[] | null
   annotations: Annotation[] | null
   scanned_at: string
+  config_path?: string
 }

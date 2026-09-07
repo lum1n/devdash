@@ -84,6 +84,7 @@ func serveCmd() *cobra.Command {
 				return err
 			}
 			fmt.Fprintf(os.Stderr, "devdash api on http://%s\n", ln.Addr())
+			fmt.Fprintf(os.Stderr, "config %s\n", app.ConfigPath())
 			fmt.Fprintf(os.Stderr, "web: cd web && pnpm dev  (proxies /api here)\n")
 			return srv.Serve(ln)
 		},

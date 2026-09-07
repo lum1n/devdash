@@ -54,7 +54,7 @@ go build -o devdash ./cmd/devdash
 install -m 755 devdash ~/.local/bin/devdash
 ```
 
-`--config` and `DEVDASH_CONFIG` select the yaml file (default `~/.config/devdash/config.yaml`).
+`--config` and `DEVDASH_CONFIG` select the yaml file. Default is `~/.config/devdash/config.yaml` (or `$XDG_CONFIG_HOME/devdash/config.yaml`). On macOS, if that file is missing, an existing file under `~/Library/Application Support/devdash/` is used.
 
 ## Run with Docker
 

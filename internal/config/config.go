@@ -48,16 +48,43 @@ func Default() Config {
 	return cfg
 }
 
-// Path is the default config file location.
+// Path is the config file location.
+// DEVDASH_CONFIG wins. Otherwise ~/.config/devdash/config.yaml (or $XDG_CONFIG_HOME).
+// If that file is missing but a file already exists under the OS user config dir
+// (macOS: ~/Library/Application Support/devdash), that path is used instead.
 func Path() (string, error) {
-	if p := os.Getenv(envPrefix + "_CONFIG"); p != "" {
+	if p := strings.TrimSpace(os.Getenv(envPrefix + "_CONFIG")); p != "" {
 		return p, nil
 	}
-	dir, err := os.UserConfigDir()
+	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(dir, "devdash", "config.yaml"), nil
+	userCfg, _ := os.UserConfigDir()
+	return resolvePath(os.Getenv("XDG_CONFIG_HOME"), home, userCfg), nil
+}
+
+func resolvePath(xdgConfigHome, home, userConfigDir string) string {
+	xdgHome := strings.TrimSpace(xdgConfigHome)
+	if xdgHome == "" {
+		xdgHome = filepath.Join(home, ".config")
+	}
+	xdgPath := filepath.Join(xdgHome, "devdash", "config.yaml")
+	if fileExists(xdgPath) {
+		return xdgPath
+	}
+	if userConfigDir != "" {
+		alt := filepath.Join(userConfigDir, "devdash", "config.yaml")
+		if alt != xdgPath && fileExists(alt) {
+			return alt
+		}
+	}
+	return xdgPath
+}
+
+func fileExists(p string) bool {
+	st, err := os.Stat(p)
+	return err == nil && !st.IsDir()
 }
 
 // Load reads path, or returns defaults if the file is missing.

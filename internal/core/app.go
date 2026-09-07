@@ -28,6 +28,7 @@ type Overview struct {
 	Commands   []plugin.Command    `json:"commands"`
 	Notes      []plugin.Annotation `json:"annotations"`
 	ScannedAt  time.Time           `json:"scanned_at"`
+	ConfigPath string              `json:"config_path"`
 }
 
 // WorkspaceInfo is one named scan context.
@@ -144,6 +145,7 @@ func (a *App) Overview(ctx context.Context) (Overview, error) {
 		}
 		a.stampWorkspaces(&ov)
 		normalizeOverview(&ov)
+		ov.ConfigPath = a.cfgPath
 		return ov, nil
 	}
 	a.mu.RLock()
@@ -186,7 +188,15 @@ func (a *App) Overview(ctx context.Context) (Overview, error) {
 	}
 	a.stampWorkspacesLocked(&ov)
 	normalizeOverview(&ov)
+	ov.ConfigPath = a.cfgPath
 	return ov, nil
+}
+
+// ConfigPath is the yaml file this process loaded.
+func (a *App) ConfigPath() string {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	return a.cfgPath
 }
 
 func normalizeOverview(ov *Overview) {
