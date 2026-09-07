@@ -1,6 +1,7 @@
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { DiffPage } from '#/components/diff'
+import { RouteError } from '#/components/route-error'
 import { diffQueryOptions } from '#/lib/query-options'
 import { cleanRepoId } from '#/lib/repo-id'
 
@@ -13,6 +14,7 @@ export const Route = createFileRoute('/repos/$repoId/diff/$ref')({
     const path = searchPath(location.search)
     await context.queryClient.ensureQueryData(diffQueryOptions(id, params.ref, path))
   },
+  errorComponent: RouteError,
   component: DiffRoute,
 })
 

@@ -3,6 +3,7 @@ package scan
 import (
 	"bytes"
 	"context"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -46,6 +47,9 @@ func Roots(ctx context.Context, roots []string, opt Options) ([]Repo, error) {
 		}
 		repos, err := Root(ctx, root, opt)
 		if err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				continue
+			}
 			return out, err
 		}
 		for _, r := range repos {

@@ -59,6 +59,23 @@ func TestRootPrefersChildReposOverWrapperGit(t *testing.T) {
 	}
 }
 
+func TestRootsSkipsMissing(t *testing.T) {
+	dir := t.TempDir()
+	alpha := filepath.Join(dir, "alpha")
+	if err := os.MkdirAll(alpha, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	initRepo(t, alpha)
+	missing := filepath.Join(dir, "gone")
+	repos, err := Roots(context.Background(), []string{missing, dir}, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(repos) != 1 || repos[0].Name != "alpha" {
+		t.Fatalf("got %#v", repos)
+	}
+}
+
 func initRepo(t *testing.T, dir string) {
 	t.Helper()
 	run := func(args ...string) {

@@ -3,11 +3,13 @@ import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
 import { overviewQueryOptions } from '#/lib/query-options'
 import { addWorkspace, setFocus } from '#/lib/server-functions'
+import { RouteError } from '#/components/route-error'
 
 export const Route = createFileRoute('/settings')({
   loader: async ({ context }) => {
     await context.queryClient.ensureQueryData(overviewQueryOptions())
   },
+  errorComponent: RouteError,
   component: SettingsPage,
 })
 

@@ -9,6 +9,7 @@ import {
 import type { QueryClient } from '@tanstack/react-query'
 import { useQuery } from '@tanstack/react-query'
 import { CommandPalette } from '#/components/palette'
+import { RouteError } from '#/components/route-error'
 import { WorkspacePicker } from '#/components/workspaces'
 import { overviewQueryOptions } from '#/lib/query-options'
 import appCss from '../styles.css?url'
@@ -27,22 +28,9 @@ export const Route = createRootRouteWithContext<RouterContext>()({
     ],
     links: [{ rel: 'stylesheet', href: appCss }],
   }),
-  errorComponent: RootError,
+  errorComponent: RouteError,
   shellComponent: RootDocument,
 })
-
-function RootError({ error }: { error: unknown }) {
-  const message = error instanceof Error ? error.message : 'unknown error'
-  return (
-    <div className="content">
-      <p className="section-title">startup</p>
-      <p className="empty danger">{message}</p>
-      <p className="muted">
-        start the go api: <code>go run ./cmd/devdash serve</code>
-      </p>
-    </div>
-  )
-}
 
 function RootDocument() {
   const pathname = useRouterState({ select: (s) => s.location.pathname })
