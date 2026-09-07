@@ -41,6 +41,31 @@ func TestRootFindsImmediateGitRepos(t *testing.T) {
 	}
 }
 
+func TestRootFindsNestedGitRepos(t *testing.T) {
+	dir := t.TempDir()
+	nested := filepath.Join(dir, "clients", "acme")
+	if err := os.MkdirAll(nested, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	initRepo(t, nested)
+	skip := filepath.Join(dir, "clients", "node_modules", "pkg")
+	if err := os.MkdirAll(skip, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	initRepo(t, skip)
+
+	repos, err := Root(context.Background(), dir, Options{Ignore: []string{"node_modules"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(repos) != 1 {
+		t.Fatalf("got %d repos, want 1: %#v", len(repos), repos)
+	}
+	if repos[0].Name != "clients/acme" || repos[0].ID != "clients-acme" {
+		t.Fatalf("got id=%s name=%s", repos[0].ID, repos[0].Name)
+	}
+}
+
 func TestRootPrefersChildReposOverWrapperGit(t *testing.T) {
 	dir := t.TempDir()
 	initRepo(t, dir)

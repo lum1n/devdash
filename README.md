@@ -25,7 +25,7 @@ Bind to loopback by default. Nothing here is meant to be public.
 | tmux (optional) | terminal shortcut, acc launch/resume |
 | [agent-watcher](https://github.com/lum1n/agent-watcher) (optional) | live agent panes — consumed by acc, not a second plugin |
 
-A folder appears in the list only if it is an **immediate child of a root and has its own `.git`**. A directory that merely sits inside another repo (no `.git` of its own) is skipped.
+A folder appears in the list if it has its own `.git`, including nested under the root (`clients/acme`). Scan does not walk into a found repo, ignored names (`node_modules`, …), or hidden directories. A directory that merely sits inside another repo (no `.git` of its own) is skipped.
 
 ## Run locally
 

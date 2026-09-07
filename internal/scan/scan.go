@@ -37,7 +37,7 @@ type Options struct {
 	Ignore []string
 }
 
-// Roots walks each root and inspects immediate child git repos.
+// Roots walks each root and finds git repos at any depth.
 func Roots(ctx context.Context, roots []string, opt Options) ([]Repo, error) {
 	var out []Repo
 	seen := map[string]bool{}
@@ -63,8 +63,9 @@ func Roots(ctx context.Context, roots []string, opt Options) ([]Repo, error) {
 	return out, nil
 }
 
-// Root lists git repos that are immediate children of root.
-// If root itself is a git repo, it is returned alone.
+// Root lists git repos under root, including nested folders.
+// A directory with its own .git is a project: we do not walk into it.
+// If root itself is a git checkout and nothing nested is, it is returned alone.
 func Root(ctx context.Context, root string, opt Options) ([]Repo, error) {
 	root, err := filepath.Abs(root)
 	if err != nil {
@@ -74,28 +75,12 @@ func Root(ctx context.Context, root string, opt Options) ([]Repo, error) {
 		return nil, os.ErrNotExist
 	}
 
-	entries, err := os.ReadDir(root)
+	paths, err := collectGitDirs(ctx, root, ignoreSet(opt.Ignore))
 	if err != nil {
 		return nil, err
 	}
-	ignore := ignoreSet(opt.Ignore)
-	var paths []string
-	for _, e := range entries {
-		if !e.IsDir() || strings.HasPrefix(e.Name(), ".") || ignore[e.Name()] {
-			continue
-		}
-		p := filepath.Join(root, e.Name())
-		if isGit(p) {
-			paths = append(paths, p)
-		}
-	}
-	// A root that is itself a git checkout (and has no child repos) is the project.
 	if len(paths) == 0 && isGit(root) {
-		r, err := inspect(ctx, root, root)
-		if err != nil {
-			return nil, err
-		}
-		return []Repo{r}, nil
+		paths = []string{root}
 	}
 
 	out := make([]Repo, 0, len(paths))
@@ -135,6 +120,40 @@ func Root(ctx context.Context, root string, opt Options) ([]Repo, error) {
 	return out, ctx.Err()
 }
 
+func collectGitDirs(ctx context.Context, root string, ignore map[string]bool) ([]string, error) {
+	var found []string
+	err := filepath.WalkDir(root, func(path string, d os.DirEntry, walkErr error) error {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if walkErr != nil {
+			if os.IsPermission(walkErr) {
+				return filepath.SkipDir
+			}
+			return walkErr
+		}
+		if !d.IsDir() {
+			return nil
+		}
+		if path == root {
+			return nil
+		}
+		name := d.Name()
+		if strings.HasPrefix(name, ".") || ignore[name] {
+			return filepath.SkipDir
+		}
+		if isGit(path) {
+			found = append(found, path)
+			return filepath.SkipDir
+		}
+		return nil
+	})
+	if err != nil && !errors.Is(err, context.Canceled) {
+		return found, err
+	}
+	return found, nil
+}
+
 func reportErr(ch chan error, err error) {
 	select {
 	case ch <- err:
@@ -143,9 +162,9 @@ func reportErr(ch chan error, err error) {
 }
 
 func inspect(ctx context.Context, root, path string) (Repo, error) {
-	name := filepath.Base(path)
+	id, name := repoIdentity(root, path)
 	r := Repo{
-		ID:    name,
+		ID:    id,
 		Name:  name,
 		Path:  path,
 		Root:  root,
@@ -189,6 +208,17 @@ func inspect(ctx context.Context, root, path string) (Repo, error) {
 	}
 	r.Attention = r.Dirty || r.Behind > 0 || r.Ahead > 0
 	return r, nil
+}
+
+func repoIdentity(root, path string) (id, name string) {
+	rel, err := filepath.Rel(root, path)
+	if err != nil || rel == "." {
+		name = filepath.Base(path)
+		return name, name
+	}
+	name = filepath.ToSlash(rel)
+	id = strings.ReplaceAll(name, "/", "-")
+	return id, name
 }
 
 func detectStack(path string) string {
