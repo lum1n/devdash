@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/url"
 
@@ -11,18 +12,26 @@ import (
 	"github.com/lum1n/devdash/internal/scan"
 )
 
-func (a *App) remote() (*remote.Client, bool) {
+func (a *App) remote(ctx context.Context) (*remote.Client, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	a.mu.RLock()
-	defer a.mu.RUnlock()
 	ws := a.cfg.ActiveWorkspace()
+	a.mu.RUnlock()
 	if !ws.IsSSH() {
-		return nil, false
+		return nil, nil
 	}
+	if err := a.ensureTunnel(ctx, ws); err != nil {
+		return nil, err
+	}
+	a.mu.RLock()
 	base := a.remoteBaseLocked(ws.ID, ws.URL)
+	a.mu.RUnlock()
 	if base == "" {
-		return nil, false
+		return nil, fmt.Errorf("workspace %s: set url or host", ws.ID)
 	}
-	return remote.New(base), true
+	return remote.New(base), nil
 }
 
 func (a *App) remoteBaseLocked(id, fallback string) string {

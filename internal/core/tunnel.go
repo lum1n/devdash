@@ -42,7 +42,7 @@ func (a *App) ensureTunnel(ctx context.Context, ws config.Workspace) error {
 	if _, err := exec.LookPath("ssh"); err != nil {
 		return fmt.Errorf("ssh not on PATH")
 	}
-	cmd := exec.CommandContext(ctx, "ssh", "-N", "-T",
+	cmd := exec.Command("ssh", "-N", "-T",
 		"-o", "BatchMode=yes",
 		"-o", "ExitOnForwardFailure=yes",
 		"-o", "ServerAliveInterval=30",

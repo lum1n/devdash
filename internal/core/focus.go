@@ -10,7 +10,11 @@ import (
 
 // SetFocus updates pin / archive / snooze for a repo and persists config.
 func (a *App) SetFocus(id, action string, hours int) error {
-	if c, ok := a.remote(); ok {
+	c, err := a.remote(context.Background())
+	if err != nil {
+		return err
+	}
+	if c != nil {
 		return remoteSetFocus(c, context.Background(), id, action, hours)
 	}
 	if _, err := a.Repo(id); err != nil {
@@ -54,7 +58,11 @@ func (a *App) MarkOpened(id string) {
 
 // SetNext stores the one-line next action for a repo.
 func (a *App) SetNext(id, text string) error {
-	if c, ok := a.remote(); ok {
+	c, err := a.remote(context.Background())
+	if err != nil {
+		return err
+	}
+	if c != nil {
 		return remoteSetNext(c, context.Background(), id, text)
 	}
 	if _, err := a.Repo(id); err != nil {

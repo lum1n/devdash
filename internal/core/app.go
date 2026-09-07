@@ -90,7 +90,11 @@ func (a *App) Config() config.Config {
 
 // Scan walks configured roots and refreshes the cache.
 func (a *App) Scan(ctx context.Context) error {
-	if c, ok := a.remote(); ok {
+	c, err := a.remote(ctx)
+	if err != nil {
+		return err
+	}
+	if c != nil {
 		ov, err := remoteScan(c, ctx)
 		if err != nil {
 			return err
@@ -138,7 +142,11 @@ func (a *App) Scan(ctx context.Context) error {
 
 // Overview returns the last scan, scanning once if empty.
 func (a *App) Overview(ctx context.Context) (Overview, error) {
-	if c, ok := a.remote(); ok {
+	c, err := a.remote(ctx)
+	if err != nil {
+		return Overview{}, err
+	}
+	if c != nil {
 		ov, err := remoteOverview(c, ctx)
 		if err != nil {
 			return Overview{}, err
@@ -234,7 +242,11 @@ func (a *App) AddRoot(path string) error {
 		return fmt.Errorf("root %s is not a directory", path)
 	}
 
-	if c, ok := a.remote(); ok {
+	c, err := a.remote(context.Background())
+	if err != nil {
+		return err
+	}
+	if c != nil {
 		_, err := remoteAddRoot(c, context.Background(), path)
 		return err
 	}

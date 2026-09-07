@@ -64,6 +64,29 @@ func TestSelectWorkspaceScansItsRoots(t *testing.T) {
 	}
 }
 
+func TestSSHWorkspaceUnreachableIsExplicit(t *testing.T) {
+	dir := t.TempDir()
+	cfgPath := filepath.Join(dir, "config.yaml")
+	raw := []byte(`listen: 127.0.0.1:8789
+active: remote
+workspaces:
+  - id: remote
+    kind: ssh
+    url: 127.0.0.1:1
+`)
+	if err := os.WriteFile(cfgPath, raw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	app, err := New(cfgPath, &plugin.Registry{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = app.Detail(context.Background(), "devdash")
+	if err == nil || !strings.Contains(err.Error(), "not reachable") {
+		t.Fatalf("err=%v", err)
+	}
+}
+
 func TestOverviewEmptySlicesAreJSONArrays(t *testing.T) {
 	dir := t.TempDir()
 	cfgPath := filepath.Join(dir, "config.yaml")
