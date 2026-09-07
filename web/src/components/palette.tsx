@@ -85,7 +85,7 @@ export function CommandPalette() {
       return
     }
     if (item.kind === 'plugin') {
-      const target = item.repo_id || repoId || data?.today[0]?.repo.id
+      const target = item.repo_id || repoId || data?.today?.[0]?.repo.id
       if (!target) return
       const plugin = item.plugin || 'acc'
       let action = item.action || 'launch'

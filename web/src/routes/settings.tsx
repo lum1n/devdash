@@ -100,12 +100,12 @@ function SettingsPage() {
         </section>
         <section className="section">
           <p className="section-title">roots</p>
-          {data.roots.length === 0 ? (
+          {(data.roots ?? []).length === 0 ? (
             <p className="empty muted">none yet — add one from overview</p>
           ) : (
             <table className="data">
               <tbody>
-                {data.roots.map((root) => (
+                {(data.roots ?? []).map((root) => (
                   <tr key={root}>
                     <td>{root}</td>
                   </tr>

@@ -43,7 +43,7 @@ export function OverviewPage({ overview }: { overview: Overview }) {
   const repos = useMemo(() => {
     const now = Date.now()
     const archived = new Set(archivedIds)
-    return overview.repos.filter((r) => {
+    return (overview.repos ?? []).filter((r) => {
       const isArchived = archived.has(r.id)
       if (filter === 'archived') return isArchived
       if (isArchived) return false

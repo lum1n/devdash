@@ -143,6 +143,7 @@ func (a *App) Overview(ctx context.Context) (Overview, error) {
 			return Overview{}, err
 		}
 		a.stampWorkspaces(&ov)
+		normalizeOverview(&ov)
 		return ov, nil
 	}
 	a.mu.RLock()
@@ -184,7 +185,29 @@ func (a *App) Overview(ctx context.Context) (Overview, error) {
 		ScannedAt: a.scannedAt,
 	}
 	a.stampWorkspacesLocked(&ov)
+	normalizeOverview(&ov)
 	return ov, nil
+}
+
+func normalizeOverview(ov *Overview) {
+	ov.Workspaces = nz(ov.Workspaces)
+	ov.Roots = nz(ov.Roots)
+	ov.Repos = nz(ov.Repos)
+	ov.Today = nz(ov.Today)
+	ov.Palette = nz(ov.Palette)
+	ov.Widgets = nz(ov.Widgets)
+	ov.Commands = nz(ov.Commands)
+	ov.Notes = nz(ov.Notes)
+	ov.Focus.Pinned = nz(ov.Focus.Pinned)
+	ov.Focus.Archived = nz(ov.Focus.Archived)
+	ov.Focus.Snoozed = nz(ov.Focus.Snoozed)
+}
+
+func nz[T any](s []T) []T {
+	if s == nil {
+		return []T{}
+	}
+	return s
 }
 
 // AddRoot appends an existing directory and persists config.

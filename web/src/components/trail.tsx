@@ -17,7 +17,7 @@ export function PageTrail({ crumbs }: { crumbs: Crumb[] }) {
 
 export function useRepoName(repoId: string) {
   const { data } = useQuery(overviewQueryOptions())
-  return data?.repos.find((r) => r.id === repoId)?.name ?? repoId
+  return data?.repos?.find((r) => r.id === repoId)?.name ?? repoId
 }
 
 type Crumb = {
