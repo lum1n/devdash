@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"net/url"
+	"os"
 	"os/exec"
 	"strings"
 	"time"
@@ -20,9 +21,10 @@ type sshTunnel struct {
 
 func (a *App) ensureTunnel(ctx context.Context, ws config.Workspace) error {
 	base := remote.NormalizeURL(ws.URL)
-	if base != "" && remote.New(base).Healthy(ctx) {
+	candidates := append([]string{base}, dockerHostFallback(base)...)
+	if hit := firstHealthy(ctx, candidates...); hit != "" {
 		a.mu.Lock()
-		a.tunnels[ws.ID] = &sshTunnel{url: base}
+		a.tunnels[ws.ID] = &sshTunnel{url: hit}
 		a.mu.Unlock()
 		return nil
 	}
@@ -40,12 +42,18 @@ func (a *App) ensureTunnel(ctx context.Context, ws config.Workspace) error {
 	}
 	localURL, remoteAddr := tunnelAddrs(ws)
 	if _, err := exec.LookPath("ssh"); err != nil {
-		return fmt.Errorf("ssh not on PATH")
+		hint := dockerHostFallback(base)
+		if len(hint) > 0 {
+			return fmt.Errorf("workspace %s: ssh not in this environment; run `ssh -L` on the host so %s is the hop (compose cannot reach 127.0.0.1 on the Mac)", ws.ID, hint[0])
+		}
+		return fmt.Errorf("workspace %s: ssh not on PATH", ws.ID)
 	}
 	cmd := exec.Command("ssh", "-N", "-T",
 		"-o", "BatchMode=yes",
 		"-o", "ExitOnForwardFailure=yes",
 		"-o", "ServerAliveInterval=30",
+		"-o", "StrictHostKeyChecking=accept-new",
+		"-o", "UserKnownHostsFile=/tmp/devdash-known-hosts",
 		"-L", localForward(localURL, remoteAddr),
 		ws.Host,
 	)
@@ -111,4 +119,48 @@ func waitHealthy(ctx context.Context, base string, d time.Duration) bool {
 		time.Sleep(200 * time.Millisecond)
 	}
 	return c.Healthy(ctx)
+}
+
+func firstHealthy(ctx context.Context, urls ...string) string {
+	for _, u := range urls {
+		if u == "" {
+			continue
+		}
+		if remote.New(u).Healthy(ctx) {
+			return u
+		}
+	}
+	return ""
+}
+
+func dockerHostFallback(base string) []string {
+	if !runningInDocker() {
+		return nil
+	}
+	alt := loopbackToDockerHost(base)
+	if alt == "" || alt == base {
+		return nil
+	}
+	return []string{alt}
+}
+
+func runningInDocker() bool {
+	_, err := os.Stat("/.dockerenv")
+	return err == nil
+}
+
+func loopbackToDockerHost(base string) string {
+	u, err := url.Parse(strings.TrimSpace(base))
+	if err != nil || u.Host == "" {
+		return ""
+	}
+	host, port, err := net.SplitHostPort(u.Host)
+	if err != nil {
+		return ""
+	}
+	if host != "127.0.0.1" && host != "localhost" && host != "::1" {
+		return ""
+	}
+	u.Host = net.JoinHostPort("host.docker.internal", port)
+	return u.String()
 }

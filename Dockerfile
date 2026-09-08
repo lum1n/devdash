@@ -9,7 +9,7 @@ RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/devdash ./cmd/devd
 
 FROM debian:bookworm-slim AS api
 RUN apt-get update \
-	&& apt-get install -y --no-install-recommends git ca-certificates \
+	&& apt-get install -y --no-install-recommends git ca-certificates openssh-client \
 	&& rm -rf /var/lib/apt/lists/*
 COPY --from=api-build /out/devdash /usr/local/bin/devdash
 ENV HOME=/root

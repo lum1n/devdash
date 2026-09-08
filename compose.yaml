@@ -11,6 +11,8 @@ services:
         acc: ../ai-command-center
     ports:
       - "127.0.0.1:8789:8789"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       DEVDASH_LISTEN: 0.0.0.0:8789
       DEVDASH_ROOTS: /repos
@@ -19,6 +21,7 @@ services:
       - ${DEVDASH_REPOS:-${HOME}/repos}:/repos:ro
       - ${HOME}/.config/devdash:/root/.config/devdash
       - ${HOME}/.config/acc:/root/.config/acc:ro
+      - ${HOME}/.ssh:/root/.ssh:ro
     restart: unless-stopped
 
   web:

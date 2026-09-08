@@ -86,6 +86,8 @@ Compose sets `DEVDASH_LISTEN=0.0.0.0:8789` and `DEVDASH_ROOTS=/repos`, and bind-
 
 Ports are published on loopback only.
 
+SSH workspaces inside Compose: the image has `ssh` and mounts `~/.ssh`. A hop already open on the Mac (`ssh -L 8790:127.0.0.1:8789 host`) is reached as `host.docker.internal`, not container `127.0.0.1`. On Docker Desktop, passphrase keys need the agent (`SSH_AUTH_SOCK=/run/host-services/ssh-auth.sock`).
+
 ## Config
 
 Copy `config.example.yaml` to `~/.config/devdash/config.yaml`:
