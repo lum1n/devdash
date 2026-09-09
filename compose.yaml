@@ -17,11 +17,16 @@ services:
       DEVDASH_LISTEN: 0.0.0.0:8789
       DEVDASH_ROOTS: /repos
       HOME: /root
+      SSH_AUTH_SOCK: /ssh-auth.sock
     volumes:
       - ${DEVDASH_REPOS:-${HOME}/repos}:/repos:ro
       - ${HOME}/.config/devdash:/root/.config/devdash
       - ${HOME}/.config/acc:/root/.config/acc:ro
       - ${HOME}/.ssh:/root/.ssh:ro
+      - type: bind
+        source: ${DEVDASH_SSH_AUTH_SOCK:-/run/host-services/ssh-auth.sock}
+        target: /ssh-auth.sock
+        required: false
     restart: unless-stopped
 
   web:

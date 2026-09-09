@@ -57,6 +57,32 @@ workspaces:
 	}
 }
 
+func TestScanRootsEnvDoesNotRewriteWorkspace(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+	raw := []byte(`listen: 127.0.0.1:8789
+active: work
+workspaces:
+  - id: work
+    name: work
+    roots: [/Users/you/work]
+`)
+	if err := os.WriteFile(path, raw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("DEVDASH_ROOTS", "/repos")
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Workspaces[0].Roots[0] != "/Users/you/work" {
+		t.Fatalf("workspace roots=%v", cfg.Workspaces[0].Roots)
+	}
+	if got := cfg.ScanRoots(); len(got) != 1 || got[0] != "/repos" {
+		t.Fatalf("scan=%v", got)
+	}
+}
+
 func TestSlugID(t *testing.T) {
 	if slugID("Private Remote") != "private-remote" {
 		t.Fatal(slugID("Private Remote"))

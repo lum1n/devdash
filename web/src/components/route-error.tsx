@@ -6,8 +6,9 @@ export function RouteError({ error }: ErrorComponentProps) {
     <div className="content">
       <p className="section-title">error</p>
       <p className="empty danger">{message}</p>
+      <p className="muted">switch workspace in the sidebar, or check compose logs</p>
       <p className="muted">
-        api: <code>go run ./cmd/devdash serve</code>
+        api: <code>docker compose logs api</code>
       </p>
     </div>
   )

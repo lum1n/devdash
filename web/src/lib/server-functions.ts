@@ -2,7 +2,7 @@ import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
 import { apiDelete, apiGet, apiPost, apiPut } from './api'
 import { cleanRepoId } from './repo-id'
-import type { Note, OpenResult, Overview, ProjectDetail, RepoDiff } from './types'
+import type { Note, OpenResult, Overview, ProjectDetail, RepoDiff, Workspace } from './types'
 
 function repoURL(id: string, suffix = '') {
   return `/api/repos/${encodeURIComponent(cleanRepoId(id))}${suffix}`
@@ -10,6 +10,10 @@ function repoURL(id: string, suffix = '') {
 
 export const getOverview = createServerFn({ method: 'GET' }).handler(async () => {
   return apiGet<Overview>('/api/overview')
+})
+
+export const getWorkspaces = createServerFn({ method: 'GET' }).handler(async () => {
+  return apiGet<{ active: string; workspaces: Workspace[] }>('/api/workspaces')
 })
 
 export const rescan = createServerFn({ method: 'POST' }).handler(async () => {

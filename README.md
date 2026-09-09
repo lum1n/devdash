@@ -86,7 +86,11 @@ Compose sets `DEVDASH_LISTEN=0.0.0.0:8789` and `DEVDASH_ROOTS=/repos`, and bind-
 
 Ports are published on loopback only.
 
-SSH workspaces inside Compose: the image has `ssh` and mounts `~/.ssh`. A hop already open on the Mac (`ssh -L 8790:127.0.0.1:8789 host`) is reached as `host.docker.internal`, not container `127.0.0.1`. On Docker Desktop, passphrase keys need the agent (`SSH_AUTH_SOCK=/run/host-services/ssh-auth.sock`).
+SSH workspaces inside Compose: the image has `ssh` and mounts `~/.ssh`. Linux `ssh` ignores macOS `UseKeychain` in that file and uses `SSH_AUTH_SOCK`. Docker Desktop exposes the agent at `/run/host-services/ssh-auth.sock` (compose maps it when present). A hop already open on the Mac (`ssh -L 8790:127.0.0.1:8789 host`) is reached as `host.docker.internal`, not container `127.0.0.1`.
+
+`DEVDASH_ROOTS=/repos` only affects the in-container scan. It is not written back to `~/.config/devdash/config.yaml`.
+
+If the active workspace is SSH and the hop is down, overview shows the error and the sidebar picker still works — switch to a local workspace.
 
 ## Config
 
@@ -117,7 +121,7 @@ A workspace is a named scan context with its own roots and Focus (pins / next / 
 | `listen` / `DEVDASH_LISTEN` | API bind address |
 | `workspaces` | named local or ssh contexts |
 | `active` / `DEVDASH_WORKSPACE` | selected workspace id |
-| `roots` / `DEVDASH_ROOTS` | legacy / override for the active local workspace |
+| `roots` / `DEVDASH_ROOTS` | scan overlay for local workspaces (not saved) |
 | `DEVDASH_CONFIG` | config file path |
 | `ignore` | child directory names to skip |
 | `actions.editor` / `actions.term` | project shortcuts (`e`, `t`) |

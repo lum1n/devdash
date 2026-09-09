@@ -85,6 +85,61 @@ workspaces:
 	if err == nil || !strings.Contains(err.Error(), "not reachable") {
 		t.Fatalf("err=%v", err)
 	}
+	ov, err := app.Overview(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ov.Error == "" || !strings.Contains(ov.Error, "not reachable") {
+		t.Fatalf("overview error=%q", ov.Error)
+	}
+	if len(ov.Workspaces) != 1 || ov.Workspaces[0].ID != "remote" || !ov.Workspaces[0].Active {
+		t.Fatalf("workspaces=%v", ov.Workspaces)
+	}
+}
+
+func TestSelectUnreachableSSHStillSwitches(t *testing.T) {
+	dir := t.TempDir()
+	root := t.TempDir()
+	cfgPath := filepath.Join(dir, "config.yaml")
+	raw := []byte(`listen: 127.0.0.1:8789
+active: local
+workspaces:
+  - id: local
+    roots: [` + root + `]
+  - id: remote
+    kind: ssh
+    url: 127.0.0.1:1
+`)
+	if err := os.WriteFile(cfgPath, raw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	app, err := New(cfgPath, &plugin.Registry{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := app.SelectWorkspace(context.Background(), "remote"); err != nil {
+		t.Fatal(err)
+	}
+	ov, err := app.Overview(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ov.Workspace.ID != "remote" {
+		t.Fatalf("active=%s", ov.Workspace.ID)
+	}
+	if ov.Error == "" {
+		t.Fatal("expected hop error")
+	}
+	if err := app.SelectWorkspace(context.Background(), "local"); err != nil {
+		t.Fatal(err)
+	}
+	ov, err = app.Overview(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ov.Workspace.ID != "local" || ov.Error != "" {
+		t.Fatalf("back=%s err=%q", ov.Workspace.ID, ov.Error)
+	}
 }
 
 func TestOverviewEmptySlicesAreJSONArrays(t *testing.T) {

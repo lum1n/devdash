@@ -314,4 +314,5 @@ export type Overview = {
   annotations: Annotation[] | null
   scanned_at: string
   config_path?: string
+  error?: string
 }

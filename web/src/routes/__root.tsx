@@ -11,7 +11,7 @@ import { useQuery } from '@tanstack/react-query'
 import { CommandPalette } from '#/components/palette'
 import { RouteError } from '#/components/route-error'
 import { WorkspacePicker } from '#/components/workspaces'
-import { overviewQueryOptions } from '#/lib/query-options'
+import { overviewQueryOptions, workspacesQueryOptions } from '#/lib/query-options'
 import appCss from '../styles.css?url'
 
 interface RouterContext {
@@ -35,6 +35,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 function RootDocument() {
   const pathname = useRouterState({ select: (s) => s.location.pathname })
   const { data } = useQuery(overviewQueryOptions())
+  const workspaces = useQuery(workspacesQueryOptions())
 
   return (
     <html lang="en">
@@ -53,7 +54,7 @@ function RootDocument() {
                 settings
               </Link>
             </nav>
-            <WorkspacePicker spaces={data?.workspaces} />
+            <WorkspacePicker spaces={workspaces.data?.workspaces ?? data?.workspaces} />
           </aside>
           <div className="main">
             <Outlet />

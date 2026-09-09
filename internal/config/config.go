@@ -119,13 +119,24 @@ func Load(path string) (Config, error) {
 func finishLoad(cfg Config) Config {
 	cfg = applyEnv(cfg)
 	cfg.NormalizeWorkspaces()
-	if v := strings.TrimSpace(os.Getenv(envPrefix + "_ROOTS")); v != "" {
-		if ws := cfg.ActivePtr(); ws != nil && !ws.IsSSH() {
-			ws.Roots = append([]string(nil), cfg.Roots...)
-		}
-	}
 	cfg.syncLegacy()
 	return cfg
+}
+
+// EnvRoots is DEVDASH_ROOTS, a runtime overlay (not written back to yaml).
+func EnvRoots() []string {
+	v := strings.TrimSpace(os.Getenv(envPrefix + "_ROOTS"))
+	if v == "" {
+		return nil
+	}
+	var roots []string
+	for _, p := range filepath.SplitList(v) {
+		p = strings.TrimSpace(p)
+		if p != "" {
+			roots = append(roots, p)
+		}
+	}
+	return roots
 }
 
 func applyEnv(cfg Config) Config {
@@ -134,18 +145,6 @@ func applyEnv(cfg Config) Config {
 	}
 	if v := strings.TrimSpace(os.Getenv(envPrefix + "_WORKSPACE")); v != "" {
 		cfg.Active = v
-	}
-	if v := strings.TrimSpace(os.Getenv(envPrefix + "_ROOTS")); v != "" {
-		var roots []string
-		for _, p := range filepath.SplitList(v) {
-			p = strings.TrimSpace(p)
-			if p != "" {
-				roots = append(roots, p)
-			}
-		}
-		if len(roots) > 0 {
-			cfg.Roots = roots
-		}
 	}
 	return cfg
 }

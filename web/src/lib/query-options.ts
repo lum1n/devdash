@@ -1,10 +1,18 @@
 import { queryOptions } from '@tanstack/react-query'
-import { getDiff, getNote, getOverview, getProject } from './server-functions'
+import { getDiff, getNote, getOverview, getProject, getWorkspaces } from './server-functions'
 
 export function overviewQueryOptions() {
   return queryOptions({
     queryKey: ['overview'],
     queryFn: () => getOverview(),
+    staleTime: 10_000,
+  })
+}
+
+export function workspacesQueryOptions() {
+  return queryOptions({
+    queryKey: ['workspaces'],
+    queryFn: () => getWorkspaces(),
     staleTime: 10_000,
   })
 }

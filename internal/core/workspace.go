@@ -37,8 +37,8 @@ func (a *App) workspaceInfosCtx(ctx context.Context) []WorkspaceInfo {
 		if w.IsSSH() {
 			base := a.remoteBaseLocked(w.ID, w.URL)
 			info.URL = base
-			if w.ID == a.cfg.Active {
-				info.Ready = remote.New(base).Healthy(ctx)
+			if t := a.tunnels[w.ID]; t != nil && t.url != "" {
+				info.Ready = true
 			}
 		}
 		out = append(out, info)
@@ -80,15 +80,6 @@ func (a *App) SelectWorkspace(ctx context.Context, id string) error {
 		return fmt.Errorf("workspace %s not found", id)
 	}
 	ws := a.cfg.Workspaces[idx]
-	a.mu.Unlock()
-
-	if ws.IsSSH() {
-		if err := a.ensureTunnel(ctx, ws); err != nil {
-			return err
-		}
-	}
-
-	a.mu.Lock()
 	a.cfg.Active = ws.ID
 	a.cfg.NormalizeWorkspaces()
 	a.repos = nil

@@ -1,17 +1,23 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
+import { workspacesQueryOptions } from '#/lib/query-options'
 import { selectWorkspace } from '#/lib/server-functions'
 import type { Workspace } from '#/lib/types'
 
 export function WorkspacePicker({ spaces }: { spaces?: Workspace[] | null }) {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
-  const list = spaces ?? []
+  const remote = useQuery(workspacesQueryOptions())
+  const list = remote.data?.workspaces ?? spaces ?? []
   const active = list.find((w) => w.active) ?? list[0]
   const select = useMutation({
     mutationFn: (id: string) => selectWorkspace({ data: { id } }),
     onSuccess: (ov) => {
       queryClient.setQueryData(['overview'], ov)
+      queryClient.setQueryData(['workspaces'], {
+        active: ov.workspace?.id,
+        workspaces: ov.workspaces ?? [],
+      })
       queryClient.removeQueries({ queryKey: ['project'] })
       void navigate({ to: '/' })
     },
@@ -25,6 +31,7 @@ export function WorkspacePicker({ spaces }: { spaces?: Workspace[] | null }) {
         aria-label="workspace"
         value={active.id}
         disabled={select.isPending || list.length === 1}
+        title={select.error instanceof Error ? select.error.message : undefined}
         onChange={(e) => {
           const id = e.target.value
           if (id && id !== active.id) select.mutate(id)

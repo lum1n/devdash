@@ -79,6 +79,10 @@ export function CommandPalette() {
       const id = item.id.replace(/^ws:/, '')
       const ov = await selectWorkspace({ data: { id } })
       queryClient.setQueryData(['overview'], ov)
+      queryClient.setQueryData(['workspaces'], {
+        active: ov.workspace?.id,
+        workspaces: ov.workspaces ?? [],
+      })
       queryClient.removeQueries({ queryKey: ['project'] })
       setOpen(false)
       await navigate({ to: '/' })

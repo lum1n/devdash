@@ -147,8 +147,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		m.ov = msg.ov
-		m.errMsg = ""
-		m.status = m.ov.ScannedAt.Local().Format("15:04:05")
+		m.errMsg = m.ov.Error
+		if m.errMsg != "" {
+			m.status = "workspace error"
+		} else {
+			m.status = m.ov.ScannedAt.Local().Format("15:04:05")
+		}
 		if n := m.rowCount(); m.idx >= n {
 			m.idx = 0
 		}

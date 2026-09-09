@@ -29,6 +29,7 @@ type Overview struct {
 	Notes      []plugin.Annotation `json:"annotations"`
 	ScannedAt  time.Time           `json:"scanned_at"`
 	ConfigPath string              `json:"config_path"`
+	Error      string              `json:"error,omitempty"`
 }
 
 // WorkspaceInfo is one named scan context.
@@ -144,12 +145,12 @@ func (a *App) Scan(ctx context.Context) error {
 func (a *App) Overview(ctx context.Context) (Overview, error) {
 	c, err := a.remote(ctx)
 	if err != nil {
-		return Overview{}, err
+		return a.failedOverview(err), nil
 	}
 	if c != nil {
 		ov, err := remoteOverview(c, ctx)
 		if err != nil {
-			return Overview{}, err
+			return a.failedOverview(err), nil
 		}
 		a.stampWorkspaces(&ov)
 		normalizeOverview(&ov)
@@ -198,6 +199,17 @@ func (a *App) Overview(ctx context.Context) (Overview, error) {
 	normalizeOverview(&ov)
 	ov.ConfigPath = a.cfgPath
 	return ov, nil
+}
+
+func (a *App) failedOverview(err error) Overview {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	ov := Overview{Error: err.Error()}
+	a.stampWorkspacesLocked(&ov)
+	ov.Palette = buildPalette(nil, nil, nil, a.cfg.ActiveWorkspace().Focus, a.workspaceInfos())
+	normalizeOverview(&ov)
+	ov.ConfigPath = a.cfgPath
+	return ov
 }
 
 // ConfigPath is the yaml file this process loaded.

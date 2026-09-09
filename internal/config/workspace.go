@@ -132,10 +132,14 @@ func (c *Config) FocusPtr() *Focus {
 
 // ScanRoots are directories to walk for the active local workspace.
 func (c *Config) ScanRoots() []string {
-	if ws := c.ActivePtr(); ws != nil && !ws.IsSSH() {
-		if len(ws.Roots) > 0 {
-			return append([]string(nil), ws.Roots...)
-		}
+	if ws := c.ActivePtr(); ws != nil && ws.IsSSH() {
+		return nil
+	}
+	if roots := EnvRoots(); len(roots) > 0 {
+		return append([]string(nil), roots...)
+	}
+	if ws := c.ActivePtr(); ws != nil && len(ws.Roots) > 0 {
+		return append([]string(nil), ws.Roots...)
 	}
 	return append([]string(nil), c.Roots...)
 }

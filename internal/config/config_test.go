@@ -22,8 +22,11 @@ func TestLoadAppliesListenAndRootsEnv(t *testing.T) {
 	if cfg.Listen != "0.0.0.0:8789" {
 		t.Fatalf("listen=%s", cfg.Listen)
 	}
-	if len(cfg.Roots) != 2 || cfg.Roots[0] != "/repos" || cfg.Roots[1] != "/work" {
-		t.Fatalf("roots=%v", cfg.Roots)
+	if len(cfg.Roots) != 1 || cfg.Roots[0] != "/old" {
+		t.Fatalf("yaml roots mutated: %v", cfg.Roots)
+	}
+	if got := cfg.ScanRoots(); len(got) != 2 || got[0] != "/repos" || got[1] != "/work" {
+		t.Fatalf("scan roots=%v", got)
 	}
 }
 

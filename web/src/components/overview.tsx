@@ -75,6 +75,7 @@ export function OverviewPage({ overview }: { overview: Overview }) {
         </div>
       </header>
       <div className="content">
+        {overview.error ? <p className="empty danger">{overview.error}</p> : null}
         <section className="section now">
           <p className="section-title">now</p>
           <div className="now-row" role="group" aria-label="now">

@@ -49,15 +49,20 @@ func (a *App) ensureTunnel(ctx context.Context, ws config.Workspace) error {
 		}
 		return fmt.Errorf("workspace %s: ssh not on PATH", ws.ID)
 	}
-	cmd := exec.Command("ssh", "-N", "-T",
+	args := []string{
+		"-N", "-T",
 		"-o", "BatchMode=yes",
 		"-o", "ExitOnForwardFailure=yes",
 		"-o", "ServerAliveInterval=30",
 		"-o", "StrictHostKeyChecking=accept-new",
 		"-o", "UserKnownHostsFile=/tmp/devdash-known-hosts",
-		"-L", localForward(localURL, remoteAddr),
-		ws.Host,
-	)
+		"-o", "IgnoreUnknown=UseKeychain,AddKeysToAgent",
+	}
+	if runningInDocker() {
+		args = append(args, "-o", "IdentityAgent=SSH_AUTH_SOCK")
+	}
+	args = append(args, "-L", localForward(localURL, remoteAddr), ws.Host)
+	cmd := exec.Command("ssh", args...)
 	var stderr bytes.Buffer
 	cmd.Stdout = nil
 	cmd.Stderr = &stderr

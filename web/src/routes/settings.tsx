@@ -38,6 +38,10 @@ function SettingsPage() {
       }),
     onSuccess: (ov) => {
       queryClient.setQueryData(['overview'], ov)
+      queryClient.setQueryData(['workspaces'], {
+        active: ov.workspace?.id,
+        workspaces: ov.workspaces ?? [],
+      })
       setWsName('')
       setWsRoots('')
       setWsHost('')
