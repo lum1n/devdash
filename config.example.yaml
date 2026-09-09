@@ -16,8 +16,8 @@ workspaces:
     name: private remote
     kind: ssh
     host: you@box
-    url: 127.0.0.1:8790          # local side of the hop
-    listen: 127.0.0.1:8789       # remote `devdash serve`
+    url: 127.0.0.1:8790          # local side of ssh -L (this machine)
+    listen: 127.0.0.1:8789       # where remote `devdash serve` binds (the box)
 ignore:
   - references
   - node_modules

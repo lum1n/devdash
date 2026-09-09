@@ -106,7 +106,8 @@ workspaces:
     name: private remote
     kind: ssh
     host: you@box
-    url: 127.0.0.1:8790
+    url: 127.0.0.1:8790          # local hop (ssh -L)
+    listen: 127.0.0.1:8789       # remote `devdash serve` bind
 ```
 
 A workspace is a named scan context with its own roots and Focus (pins / next / archive). Existing `roots:` + `focus:` become workspace `local` on first load.
@@ -122,7 +123,7 @@ A workspace is a named scan context with its own roots and Focus (pins / next / 
 | `actions.editor` / `actions.term` | project shortcuts (`e`, `t`) |
 | `focus.*` | legacy Focus; now stored per workspace |
 
-**SSH workspace:** the remote host runs `devdash serve`. Set `url` to the local side of `ssh -L` (or `host` + `url` and Devdash opens `ssh -N -L`). Plugins and Focus on that hop are the remote machine's.
+**SSH workspace:** the remote host runs `devdash serve`. `url` is the local side of `ssh -L`. `listen` is where that remote process binds (default `127.0.0.1:8789`), not the local hop. `host` + `url` and Devdash opens `ssh -N -L`. Plugins and Focus on that hop are the remote machine's.
 
 Switch with the sidebar workspace picker, settings, palette (`workspace · …`), or TUI `W`.
 

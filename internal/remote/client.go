@@ -45,8 +45,26 @@ func NormalizeURL(raw string) string {
 
 // Healthy reports /api/health ok.
 func (c *Client) Healthy(ctx context.Context) bool {
+	return c.Ping(ctx) == nil
+}
+
+// Ping hits /api/health with a short timeout.
+func (c *Client) Ping(ctx context.Context) error {
+	if c == nil {
+		return fmt.Errorf("remote url is empty")
+	}
+	probe := *c
+	probe.HTTP = &http.Client{Timeout: 2 * time.Second}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if _, hasDeadline := ctx.Deadline(); !hasDeadline {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, 2*time.Second)
+		defer cancel()
+	}
 	var out map[string]any
-	return c.Do(ctx, http.MethodGet, "/api/health", nil, &out) == nil
+	return probe.Do(ctx, http.MethodGet, "/api/health", nil, &out)
 }
 
 // Do sends JSON to path.

@@ -1,6 +1,7 @@
 package core
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"net"
@@ -57,15 +58,34 @@ func (a *App) ensureTunnel(ctx context.Context, ws config.Workspace) error {
 		"-L", localForward(localURL, remoteAddr),
 		ws.Host,
 	)
+	var stderr bytes.Buffer
 	cmd.Stdout = nil
-	cmd.Stderr = nil
+	cmd.Stderr = &stderr
 	if err := cmd.Start(); err != nil {
 		return fmt.Errorf("ssh tunnel: %w", err)
 	}
-	ready := waitHealthy(ctx, localURL, 8*time.Second)
-	if !ready {
+	exited := make(chan error, 1)
+	go func() { exited <- cmd.Wait() }()
+
+	sshGone, probeErr := waitHealthy(ctx, localURL, 15*time.Second, exited)
+	if sshGone {
+		msg := strings.TrimSpace(stderr.String())
+		if msg == "" && probeErr != nil {
+			msg = probeErr.Error()
+		}
+		if msg == "" {
+			msg = "ssh exited"
+		}
+		return fmt.Errorf("workspace %s: %s", ws.ID, msg)
+	}
+	if probeErr != nil {
 		_ = cmd.Process.Kill()
-		return fmt.Errorf("workspace %s: tunnel up but %s has no devdash api", ws.ID, localURL)
+		select {
+		case <-exited:
+		case <-time.After(2 * time.Second):
+		}
+		return fmt.Errorf("workspace %s: %s → %s %s has no /api/health (%v). On the remote, run `devdash serve` (listen %s)",
+			ws.ID, ws.Host, localURL, remoteAddr, probeErr, remoteAddr)
 	}
 	a.mu.Lock()
 	if old := a.tunnels[ws.ID]; old != nil && old.cmd != nil && old.cmd.Process != nil {
@@ -106,19 +126,31 @@ func localForward(localURL, remoteAddr string) string {
 	return host + ":" + port + ":" + remoteAddr
 }
 
-func waitHealthy(ctx context.Context, base string, d time.Duration) bool {
+func waitHealthy(ctx context.Context, base string, d time.Duration, abort <-chan error) (sshGone bool, err error) {
 	deadline := time.Now().Add(d)
 	c := remote.New(base)
+	var last error
 	for time.Now().Before(deadline) {
-		if ctx.Err() != nil {
-			return false
+		select {
+		case e := <-abort:
+			return true, e
+		default:
 		}
-		if c.Healthy(ctx) {
-			return true
+		if ctx.Err() != nil {
+			return false, ctx.Err()
+		}
+		probe, cancel := context.WithTimeout(context.WithoutCancel(ctx), 2*time.Second)
+		last = c.Ping(probe)
+		cancel()
+		if last == nil {
+			return false, nil
 		}
 		time.Sleep(200 * time.Millisecond)
 	}
-	return c.Healthy(ctx)
+	if last == nil {
+		return false, fmt.Errorf("no response")
+	}
+	return false, last
 }
 
 func firstHealthy(ctx context.Context, urls ...string) string {
