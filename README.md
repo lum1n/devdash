@@ -86,7 +86,7 @@ Compose sets `DEVDASH_LISTEN=0.0.0.0:8789` and `DEVDASH_ROOTS=/repos`, and bind-
 
 Ports are published on loopback only.
 
-SSH workspaces inside Compose: the image has `ssh` and mounts `~/.ssh`. Linux `ssh` ignores macOS `UseKeychain` in that file and uses `SSH_AUTH_SOCK`. Docker Desktop exposes the agent at `/run/host-services/ssh-auth.sock` (compose maps it when present). A hop already open on the Mac (`ssh -L 8790:127.0.0.1:8789 host`) is reached as `host.docker.internal`, not container `127.0.0.1`.
+SSH workspaces inside Compose: the image has `ssh` and mounts `~/.ssh`. Linux `ssh` ignores macOS `UseKeychain` in that file. Compose forwards Docker Desktop’s agent (`/run/host-services/ssh-auth.sock`). On Linux, set `DEVDASH_SSH_AUTH_SOCK` to your `SSH_AUTH_SOCK`. A hop already open on the Mac (`ssh -L 8790:127.0.0.1:8789 host`) is reached as `host.docker.internal`, not container `127.0.0.1`.
 
 `DEVDASH_ROOTS=/repos` only affects the in-container scan. It is not written back to `~/.config/devdash/config.yaml`.
 

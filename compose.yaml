@@ -23,10 +23,7 @@ services:
       - ${HOME}/.config/devdash:/root/.config/devdash
       - ${HOME}/.config/acc:/root/.config/acc:ro
       - ${HOME}/.ssh:/root/.ssh:ro
-      - type: bind
-        source: ${DEVDASH_SSH_AUTH_SOCK:-/run/host-services/ssh-auth.sock}
-        target: /ssh-auth.sock
-        required: false
+      - ${DEVDASH_SSH_AUTH_SOCK:-/run/host-services/ssh-auth.sock}:/ssh-auth.sock
     restart: unless-stopped
 
   web:
